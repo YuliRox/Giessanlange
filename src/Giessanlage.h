@@ -10,8 +10,8 @@ public:
     static const unsigned long INTERVAL_24H = 2UL * INTERVAL_12H;
 
     Giessanlage(
-        unsigned long wateringTime = INTERVAL_24H,
-        unsigned long pumpTime = INTERVAL_30S);
+        const unsigned long wateringTime = INTERVAL_24H,
+        const unsigned long pumpTime = INTERVAL_30S);
 
     enum State : int
     {
@@ -27,12 +27,12 @@ public:
     /// @return true if pump should run 
     bool isPumping() const;
 
-    bool allowStateChange(State newState) const;
+    bool allowStateChange(const State newState) const;
     
     /// @brief central logic update loop
     /// @param delta time in ms since last update
     /// @return true if there was a state change 
-    bool tick(unsigned long delta);
+    bool tick(const unsigned long delta);
 
     /// @brief try to start a manual pumping process
     /// @note can only return true as long as the internal state is not pumping
@@ -44,12 +44,12 @@ public:
     /// @brief sets the time for how long the pump should be running
     /// @param time time in milliseconds
     /// @return success status. false if invalid time
-    bool setPumpTime(unsigned long time);
+    bool setPumpTime(const unsigned long time);
     unsigned long getPumpTime() const;
     /// @brief sets the time between automatic pumping
     /// @param time time in milliseconds
     /// @return success status. false if invalid time
-    bool setWateringInterval(unsigned long time);
+    bool setWateringInterval(const unsigned long time);
     unsigned long getWateringInterval() const;
     /// @brief tries to reset a running watering interval timer
     /// @return success status. false if no timer is running
@@ -60,7 +60,7 @@ public:
 
 private:
     State state = State::Undefined;
-    bool setState(State newState);
+    bool setState(const State newState);
 
     unsigned long wateringTime = 0;
     unsigned long pumpTime = 0;

@@ -2,16 +2,17 @@
 #include "Giessanlage.h"
 
 Giessanlage::Giessanlage(
-    unsigned long wateringTime = INTERVAL_24H,
-    unsigned long pumpTime = INTERVAL_30S) : state(State::Idle),
+    const unsigned long wateringTime,
+    const unsigned long pumpTime) : state(State::Undefined),
                                              wateringTime(INTERVAL_24H),
                                              pumpTime(INTERVAL_30S)
 {
     setWateringInterval(wateringTime);
     setPumpTime(pumpTime);
+    setState(State::Idle);
 }
 
-bool Giessanlage::allowStateChange(State newState) const
+bool Giessanlage::allowStateChange(const State newState) const
 {
     switch (this->state)
     {
@@ -30,7 +31,7 @@ bool Giessanlage::allowStateChange(State newState) const
     }
 }
 
-bool Giessanlage::setState(State newState)
+bool Giessanlage::setState(const State newState)
 {
     if (!allowStateChange(newState))
         return false;
@@ -39,10 +40,12 @@ bool Giessanlage::setState(State newState)
     {
     case State::Idle:
         this->resetWateringTimerInternal();
+        this->pumpTimer = 0;
         break;
 
-    case State::PumpingManual:
     case State::PumpingAuto:
+        this->wateringTimer = 0;
+    case State::PumpingManual:
         this->resetPumpTimerInternal();
         break;
 
@@ -64,7 +67,7 @@ bool Giessanlage::isPumping() const
     return this->state == State::PumpingAuto || this->state == State::PumpingManual;
 }
 
-bool Giessanlage::setPumpTime(unsigned long time)
+bool Giessanlage::setPumpTime(const unsigned long time)
 {
     if (time <= 0)
         return false;
@@ -84,7 +87,7 @@ void Giessanlage::resetPumpTimerInternal()
     this->pumpTimer = this->pumpTime;
 }
 
-bool Giessanlage::setWateringInterval(unsigned long time)
+bool Giessanlage::setWateringInterval(const unsigned long time)
 {
     if (time <= 0UL)
         return false;
@@ -125,7 +128,7 @@ unsigned long Giessanlage::getRemainingWateringInterval() const
     return this->wateringTimer;
 }
 
-void updateTimer(unsigned long &timer, unsigned long delta)
+void updateTimer(unsigned long &timer, const unsigned long delta)
 {
     if (timer > delta)
     {
@@ -137,7 +140,7 @@ void updateTimer(unsigned long &timer, unsigned long delta)
     }
 }
 
-bool Giessanlage::tick(unsigned long delta)
+bool Giessanlage::tick(const unsigned long delta)
 {
     // scheduled watering
     updateTimer(this->wateringTimer, delta);
