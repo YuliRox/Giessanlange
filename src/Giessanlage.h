@@ -23,6 +23,8 @@ public:
     };
 
     State getState() const;
+    /// @brief provides information if the external pump should be running
+    /// @return true if pump should run 
     bool isPumping() const;
 
     bool allowStateChange(State newState) const;
@@ -32,13 +34,26 @@ public:
     /// @return true if there was a state change 
     bool tick(unsigned long delta);
 
+    /// @brief try to start a manual pumping process
+    /// @note can only return true as long as the internal state is not pumping
+    /// @return success status
     bool triggerPump();
+    /// @brief try to stop the current pumping process
+    /// @return success status. false if not pumping
     bool stopPump();
-
-    void setPumpTime(unsigned long time);
+    /// @brief sets the time for how long the pump should be running
+    /// @param time time in milliseconds
+    /// @return success status. false if invalid time
+    bool setPumpTime(unsigned long time);
     unsigned long getPumpTime() const;
-    void setWateringInterval(unsigned long time);
+    /// @brief sets the time between automatic pumping and substracts the actual pumping time
+    /// @param time time in milliseconds
+    /// @return success status. false if invalid time
+    bool setWateringInterval(unsigned long time);
     unsigned long getWateringInterval() const;
+    /// @brief tries to reset a running watering interval timer
+    /// @return success status. false if no timer is running
+    bool resetWateringTimer();
 
     unsigned long getRemainingPumpTime() const;
     unsigned long getRemainingWateringInterval() const;

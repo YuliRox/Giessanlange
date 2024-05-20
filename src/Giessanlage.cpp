@@ -4,9 +4,9 @@
 Giessanlage::Giessanlage(
     unsigned long wateringTime,
     unsigned long pumpTime) : state(State::Idle),
-                              wateringTime(wateringTime),
                               pumpTime(pumpTime)
 {
+    setWateringInterval(wateringTime);
 }
 
 bool Giessanlage::allowStateChange(State newState) const
@@ -62,12 +62,14 @@ bool Giessanlage::isPumping() const
     return this->state == State::PumpingAuto || this->state == State::PumpingManual;
 }
 
-void Giessanlage::setPumpTime(unsigned long time)
+bool Giessanlage::setPumpTime(unsigned long time)
 {
     if (time <= 0)
-        return;
+        return false;
 
     this->pumpTime = time;
+
+    return true;
 }
 
 unsigned long Giessanlage::getPumpTime() const
@@ -75,18 +77,32 @@ unsigned long Giessanlage::getPumpTime() const
     return this->pumpTime;
 }
 
-void Giessanlage::setWateringInterval(unsigned long time)
+bool Giessanlage::setWateringInterval(unsigned long time)
 {
     if (time - this->pumpTime <= 0UL)
-        return;
-    this->wateringTime = time;
-    // reset current timer
-    this->wateringTimer = wateringTime;
+        return false;
+
+    this->wateringTime = time - this->pumpTime;
+
+    return true;
 }
 
 unsigned long Giessanlage::getWateringInterval() const
 {
     return this->wateringTime;
+}
+
+bool Giessanlage::resetWateringTimer()
+{
+    if (this->state != State::Idle)
+        return false;
+
+    if (this->wateringTimer <= 0UL)
+        return false;
+
+    this->wateringTimer = this->wateringTime;
+
+    return true;
 }
 
 unsigned long Giessanlage::getRemainingPumpTime() const
