@@ -3,10 +3,10 @@
 
 Giessanlage::Giessanlage(
     unsigned long wateringTime,
-    unsigned long pumpTime) : wateringTime(wateringTime),
+    unsigned long pumpTime) : state(State::Idle),
+                              wateringTime(wateringTime),
                               pumpTime(pumpTime)
 {
-    this->state = State::Idle;
 }
 
 bool Giessanlage::allowStateChange(State newState) const

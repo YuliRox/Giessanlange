@@ -5,12 +5,13 @@
 class Giessanlage
 {
 public:
-    static const unsigned long INTERVAL_12H = 12 * 60 * 60 * 1000;
-    static const unsigned long INTERVAL_24H = 2 * INTERVAL_12H;
+    static const unsigned long INTERVAL_30S = 30UL * 1000UL;
+    static const unsigned long INTERVAL_12H = 12UL * 60UL * 60UL * 1000UL;
+    static const unsigned long INTERVAL_24H = 2UL * INTERVAL_12H;
 
     Giessanlage(
         unsigned long wateringTime = INTERVAL_24H,
-        unsigned long pumpTime = 30 * 1000);
+        unsigned long pumpTime = INTERVAL_30S);
 
     enum State : int
     {
@@ -42,8 +43,8 @@ private:
     State state = State::Undefined;
     bool setState(State newState);
 
-    unsigned long pumpTime = 0;
     unsigned long wateringTime = 0;
+    unsigned long pumpTime = 0;
 
     unsigned long wateringTimer = 0;
     unsigned long pumpTimer = 0;
