@@ -36,6 +36,7 @@ bool Giessanlage::setState(State newState)
     switch (newState)
     {
     case State::Idle:
+        this->wateringTimer = this->wateringTime;
         break;
 
     case State::PumpingManual:
