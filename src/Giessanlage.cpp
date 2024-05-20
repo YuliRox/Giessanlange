@@ -110,7 +110,7 @@ void updateTimer(unsigned long &timer, unsigned long delta)
     }
 }
 
-void Giessanlage::tick(unsigned long delta)
+bool Giessanlage::tick(unsigned long delta)
 {
     // scheduled watering
     updateTimer(this->wateringTimer, delta);
@@ -120,15 +120,17 @@ void Giessanlage::tick(unsigned long delta)
     switch (this->state)
     {
     case State::Idle:
-        break;
+        if (this->wateringTimer <= 0)
+            return this->setState(State::PumpingAuto);
+        return false;
     case State::PumpingManual:
     case State::PumpingAuto:
         if (this->pumpTimer <= 0)
-            this->setState(State::Idle);
-        break;
+            return this->setState(State::Idle);
+        return false;
 
     default:
-        break;
+        return false;
     }
 }
 

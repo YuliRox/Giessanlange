@@ -26,7 +26,11 @@ public:
     bool isPumping() const;
 
     bool allowStateChange(State newState) const;
-    void tick(unsigned long delta);
+    
+    /// @brief central logic update loop
+    /// @param delta time in ms since last update
+    /// @return true if there was a state change 
+    bool tick(unsigned long delta);
 
     bool triggerPump();
     bool stopPump();
