@@ -2,11 +2,13 @@
 #include "Giessanlage.h"
 
 Giessanlage::Giessanlage(
-    unsigned long wateringTime,
-    unsigned long pumpTime) : state(State::Idle),
-                              pumpTime(pumpTime)
+    unsigned long wateringTime = INTERVAL_24H,
+    unsigned long pumpTime = INTERVAL_30S) : state(State::Idle),
+                                             wateringTime(INTERVAL_24H),
+                                             pumpTime(INTERVAL_30S)
 {
     setWateringInterval(wateringTime);
+    setPumpTime(pumpTime);
 }
 
 bool Giessanlage::allowStateChange(State newState) const
@@ -36,12 +38,12 @@ bool Giessanlage::setState(State newState)
     switch (newState)
     {
     case State::Idle:
-        this->wateringTimer = this->wateringTime;
+        this->resetWateringTimerInternal();
         break;
 
     case State::PumpingManual:
     case State::PumpingAuto:
-        this->pumpTimer = this->pumpTime;
+        this->resetPumpTimerInternal();
         break;
 
     default:
@@ -77,12 +79,17 @@ unsigned long Giessanlage::getPumpTime() const
     return this->pumpTime;
 }
 
+void Giessanlage::resetPumpTimerInternal()
+{
+    this->pumpTimer = this->pumpTime;
+}
+
 bool Giessanlage::setWateringInterval(unsigned long time)
 {
-    if (time - this->pumpTime <= 0UL)
+    if (time <= 0UL)
         return false;
 
-    this->wateringTime = time - this->pumpTime;
+    this->wateringTime = time;
 
     return true;
 }
@@ -92,15 +99,18 @@ unsigned long Giessanlage::getWateringInterval() const
     return this->wateringTime;
 }
 
+void Giessanlage::resetWateringTimerInternal()
+{
+    // substract pump time from watering interval to not shift the timer logic as only one timer activly runs
+    this->wateringTimer = this->wateringTime - this->pumpTime;
+}
+
 bool Giessanlage::resetWateringTimer()
 {
-    if (this->state != State::Idle)
-        return false;
-
     if (this->wateringTimer <= 0UL)
         return false;
 
-    this->wateringTimer = this->wateringTime;
+    resetWateringTimerInternal();
 
     return true;
 }

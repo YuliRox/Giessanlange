@@ -46,7 +46,7 @@ public:
     /// @return success status. false if invalid time
     bool setPumpTime(unsigned long time);
     unsigned long getPumpTime() const;
-    /// @brief sets the time between automatic pumping and substracts the actual pumping time
+    /// @brief sets the time between automatic pumping
     /// @param time time in milliseconds
     /// @return success status. false if invalid time
     bool setWateringInterval(unsigned long time);
@@ -67,6 +67,9 @@ private:
 
     unsigned long wateringTimer = 0;
     unsigned long pumpTimer = 0;
+
+    void resetWateringTimerInternal();
+    void resetPumpTimerInternal();
 };
 
 #endif
