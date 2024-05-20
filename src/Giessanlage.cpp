@@ -76,7 +76,7 @@ unsigned long Giessanlage::getPumpTime() const
 
 void Giessanlage::setWateringInterval(unsigned long time)
 {
-    if (time <= 0)
+    if (time - this->pumpTime <= 0UL)
         return;
     this->wateringTime = time;
     // reset current timer
@@ -120,12 +120,12 @@ bool Giessanlage::tick(unsigned long delta)
     switch (this->state)
     {
     case State::Idle:
-        if (this->wateringTimer <= 0)
+        if (this->wateringTimer <= 0UL)
             return this->setState(State::PumpingAuto);
         return false;
     case State::PumpingManual:
     case State::PumpingAuto:
-        if (this->pumpTimer <= 0)
+        if (this->pumpTimer <= 0UL)
             return this->setState(State::Idle);
         return false;
 
