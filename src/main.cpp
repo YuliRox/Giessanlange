@@ -84,7 +84,7 @@ void loop()
     // Wie lange zwischen 2x pumpen warten
     anlage.setWateringInterval(poti2.Value * 0.5);
   }
-}
 */
+}
 
 // put function definitions here:
