@@ -9,5 +9,14 @@
 		"explorer.fileNesting.patterns": {
 			"*.cpp": "${capture}.h"
 		}
+	},
+	"extensions": {
+		"recommendations": [
+			"platformio.platformio-ide",
+			"GitHub.remotehub"
+		],
+		"unwantedRecommendations": [
+			"vscjava.vscode-java-pack"
+		]
 	}
 }
