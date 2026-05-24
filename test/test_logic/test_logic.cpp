@@ -13,13 +13,13 @@ void test_defaults_are_initialized()
 void test_trigger_and_stop_pump()
 {
     Giessanlage g;
-    TEST_ASSERT_TRUE(g.triggerPump());
+    TEST_ASSERT_TRUE(g.triggerAllPumps());
     TEST_ASSERT_EQUAL(Giessanlage::State::PumpingManual, g.getState(0));
-    TEST_ASSERT_TRUE(g.isPumping());
+    TEST_ASSERT_TRUE(g.isAnyPumping());
 
-    TEST_ASSERT_TRUE(g.stopPump());
+    TEST_ASSERT_TRUE(g.stopAllPumps());
     TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(0));
-    TEST_ASSERT_FALSE(g.isPumping());
+    TEST_ASSERT_FALSE(g.isAnyPumping());
 }
 
 void test_auto_pump_after_interval_elapsed()
@@ -31,13 +31,13 @@ void test_auto_pump_after_interval_elapsed()
     // So auto-pump should start after 800 ms for (1000, 200).
     g.tick(800UL);
     TEST_ASSERT_EQUAL(Giessanlage::State::PumpingAuto, g.getState(0));
-    TEST_ASSERT_TRUE(g.isPumping());
+    TEST_ASSERT_TRUE(g.isAnyPumping());
 }
 
 void test_pump_stops_after_pump_time_elapsed()
 {
     Giessanlage g(1000UL, 200UL);
-    TEST_ASSERT_TRUE(g.triggerPump());
+    TEST_ASSERT_TRUE(g.triggerAllPumps());
     TEST_ASSERT_EQUAL(Giessanlage::State::PumpingManual, g.getState(0));
 
     g.tick(150UL);
@@ -45,7 +45,7 @@ void test_pump_stops_after_pump_time_elapsed()
 
     g.tick(50UL);
     TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(0));
-    TEST_ASSERT_FALSE(g.isPumping());
+    TEST_ASSERT_FALSE(g.isAnyPumping());
 }
 
 void test_setters_reject_invalid_values()
@@ -58,8 +58,8 @@ void test_setters_reject_invalid_values()
 void test_cannot_trigger_twice_while_pumping()
 {
     Giessanlage g;
-    TEST_ASSERT_TRUE(g.triggerPump());
-    TEST_ASSERT_FALSE(g.triggerPump());
+    TEST_ASSERT_TRUE(g.triggerAllPumps());
+    TEST_ASSERT_FALSE(g.triggerAllPumps());
 }
 
 // Regression: stopping one auto-pumping channel while another is still pumping

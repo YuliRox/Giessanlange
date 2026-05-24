@@ -90,7 +90,7 @@ Giessanlage::State Giessanlage::getState(const int channel) const
     return this->channels[channel].state;
 }
 
-bool Giessanlage::isPumping() const
+bool Giessanlage::isAnyPumping() const
 {
     for (int c = 0; c < CHANNEL_COUNT; ++c)
     {
@@ -204,7 +204,7 @@ bool Giessanlage::tick(const unsigned long delta)
     return anyChange;
 }
 
-bool Giessanlage::triggerPump()
+bool Giessanlage::triggerAllPumps()
 {
     bool any = false;
     for (int c = 0; c < CHANNEL_COUNT; ++c)
@@ -217,7 +217,7 @@ bool Giessanlage::triggerPump(const int channel)
     return setState(channel, State::PumpingManual);
 }
 
-bool Giessanlage::stopPump()
+bool Giessanlage::stopAllPumps()
 {
     bool any = false;
     for (int c = 0; c < CHANNEL_COUNT; ++c)

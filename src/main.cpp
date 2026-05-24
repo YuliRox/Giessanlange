@@ -101,13 +101,13 @@ void loop()
         togglePump(1);
     if (buttonCancel.poll(currentTime))
     {
-        if (anlage.stopPump())
+        if (anlage.stopAllPumps())
             Serial.println("Cancel: all pumps off");
     }
 
     if (outputRemainingWait >= outputRemainingWaitInterval)
     {
-        if (!anlage.isPumping())
+        if (!anlage.isAnyPumping())
         {
             unsigned long remainTime = anlage.getRemainingWateringInterval();
             Serial.print("Remaining until next watering: ");

@@ -27,7 +27,7 @@ public:
     State getState(const int channel) const;
 
     /// @brief true if any channel is currently pumping
-    bool isPumping() const;
+    bool isAnyPumping() const;
     bool isPumping(const int channel) const;
 
     bool allowStateChange(const int channel, const State newState) const;
@@ -39,13 +39,13 @@ public:
 
     /// @brief start a manual pump cycle on all idle channels
     /// @return true if at least one channel transitioned
-    bool triggerPump();
+    bool triggerAllPumps();
     /// @brief start a manual pump cycle on the given channel
     bool triggerPump(const int channel);
 
     /// @brief stop pumping on all channels currently pumping
     /// @return true if at least one channel transitioned
-    bool stopPump();
+    bool stopAllPumps();
     /// @brief stop pumping on the given channel
     bool stopPump(const int channel);
 
