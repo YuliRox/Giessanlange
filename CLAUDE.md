@@ -11,21 +11,21 @@ Solar-powered plant watering controller ("Gießanlage") on an `ESP32-C6-DevKitC-
 PlatformIO is the build system. Defined environments in `platformio.ini`:
 
 - `esp32-c6-devkitc-1` — default, real hardware target. Uses the pioarduino fork of platform-espressif32.
-- `native` — host build for unit tests. `build_src_filter` excludes `main.cpp` and compiles only `Giessanlage.cpp` against Unity.
+- `native` — host build for unit tests. Compiles the `lib/` components (e.g. `Giessanlage`, `DebouncedButton`) against Unity; `main.cpp` is in `src/` and is not part of this env.
 
 Common commands:
 
 - `pio run` — build default env (ESP32-C6).
 - `pio run -t upload` — flash the device.
 - `pio device monitor` — serial monitor at `115200` baud.
-- `pio test -e native` — run host unit tests (`test/test_logic/test_logic.cpp`, Unity).
-- `pio test -e native -f test_logic` — single test file filter.
+- `pio test -e native` — run host unit tests (suites under `test/test_*/`, Unity).
+- `pio test -e native -f test_logic` — filter by suite directory name (e.g. `test_logic`, `test_button`).
 
 ## Architecture
 
 Two layers, deliberately separated so the core logic is testable on the host:
 
-1. **`src/Giessanlage.{h,cpp}`** — pure, platform-independent state machine. Owns `wateringTimer`, `pumpTimer`, and a `State` enum (`Idle`, `PumpingManual`, `PumpingAuto`). All time is passed in via `tick(delta_ms)`; the class never calls `millis()` itself. This is what `env:native` tests exercise.
+1. **`lib/Giessanlage/src/Giessanlage.{h,cpp}`** — pure, platform-independent state machine. Owns `wateringTimer`, `pumpTimer`, and a `State` enum (`Idle`, `PumpingManual`, `PumpingAuto`). All time is passed in via `tick(delta_ms)`; the class never calls `millis()` itself. This is what `env:native` tests exercise.
 2. **`src/main.cpp`** — Arduino glue: reads buttons / potentiometer / interval switch, debounces them, calls `anlage.tick(...)`, and writes `digitalWrite(PUMP_x_GPIO, anlage.isPumping() ? PUMP_ON : PUMP_OFF)`. **Note (per repo owner): `main.cpp` is stale from the old Nano revision** — its pin map matches the README/old design but predates the schematic-driven GPIO map in `docs/GPIO_MAPPING.md` (e.g. it has no I2C, ultrasonic enable, or TOF support yet). Treat `docs/GPIO_MAPPING.md` + `schematics/giessanlage/giessanlage.kicad_sch` as the source of truth for hardware; expect `main.cpp` to need rework to match.
 
 ## Hardware reference (where to look, not what to memorize)
