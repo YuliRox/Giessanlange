@@ -18,8 +18,8 @@ Common commands:
 - `pio run` — build default env (ESP32-C6).
 - `pio run -t upload` — flash the device.
 - `pio device monitor` — serial monitor at `115200` baud.
-- `pio test -e native` — run host unit tests (`test/test_main.cpp`, Unity).
-- `pio test -e native -f test_main` — single test file filter.
+- `pio test -e native` — run host unit tests (`test/test_logic/test_logic.cpp`, Unity).
+- `pio test -e native -f test_logic` — single test file filter.
 
 ## Architecture
 
