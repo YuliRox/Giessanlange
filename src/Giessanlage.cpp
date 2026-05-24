@@ -83,11 +83,6 @@ bool Giessanlage::setState(const int channel, const State newState)
     return true;
 }
 
-Giessanlage::State Giessanlage::getState() const
-{
-    return getState(0);
-}
-
 Giessanlage::State Giessanlage::getState(const int channel) const
 {
     if (!isValidChannel(channel))
@@ -160,11 +155,6 @@ bool Giessanlage::resetWateringTimer()
 
     resetWateringTimerInternal();
     return true;
-}
-
-unsigned long Giessanlage::getRemainingPumpTime() const
-{
-    return getRemainingPumpTime(0);
 }
 
 unsigned long Giessanlage::getRemainingPumpTime(const int channel) const

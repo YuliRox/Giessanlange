@@ -24,8 +24,6 @@ public:
         PumpingAuto,
     };
 
-    /// @brief state of channel 0
-    State getState() const;
     State getState(const int channel) const;
 
     /// @brief true if any channel is currently pumping
@@ -58,8 +56,6 @@ public:
     unsigned long getWateringInterval() const;
     bool resetWateringTimer();
 
-    /// @brief remaining pump time of channel 0
-    unsigned long getRemainingPumpTime() const;
     unsigned long getRemainingPumpTime(const int channel) const;
     unsigned long getRemainingWateringInterval() const;
 
