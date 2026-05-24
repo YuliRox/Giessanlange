@@ -61,9 +61,11 @@ bool Giessanlage::setState(const int channel, const State newState)
     case State::Idle:
         this->channels[channel].pumpTimer = 0;
         this->channels[channel].state = newState;
-        // only reset the shared watering timer when no channel is still pumping
-        if (allChannelsIdle())
-            this->resetWateringTimerInternal();
+        // Reset the shared watering timer on every Idle transition; otherwise a
+        // per-channel stop while another channel is still pumping would leave
+        // wateringTimer at 0 and immediately re-trigger PumpingAuto on the
+        // next tick.
+        this->resetWateringTimerInternal();
         return true;
 
     case State::PumpingAuto:
