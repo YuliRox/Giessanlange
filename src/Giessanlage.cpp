@@ -3,18 +3,38 @@
 
 Giessanlage::Giessanlage(
     const unsigned long wateringTime,
-    const unsigned long pumpTime) : state(State::Undefined),
-                                             wateringTime(INTERVAL_24H),
-                                             pumpTime(INTERVAL_30S)
+    const unsigned long pumpTime) : wateringTime(INTERVAL_24H),
+                                    pumpTime(INTERVAL_30S)
 {
     setWateringInterval(wateringTime);
     setPumpTime(pumpTime);
-    setState(State::Idle);
+    for (int c = 0; c < CHANNEL_COUNT; ++c)
+    {
+        setState(c, State::Idle);
+    }
 }
 
-bool Giessanlage::allowStateChange(const State newState) const
+bool Giessanlage::isValidChannel(const int channel) const
 {
-    switch (this->state)
+    return channel >= 0 && channel < CHANNEL_COUNT;
+}
+
+bool Giessanlage::allChannelsIdle() const
+{
+    for (int c = 0; c < CHANNEL_COUNT; ++c)
+    {
+        if (this->channels[c].state != State::Idle)
+            return false;
+    }
+    return true;
+}
+
+bool Giessanlage::allowStateChange(const int channel, const State newState) const
+{
+    if (!isValidChannel(channel))
+        return false;
+
+    switch (this->channels[channel].state)
     {
     case State::Undefined:
         return (newState == Idle);
@@ -31,40 +51,64 @@ bool Giessanlage::allowStateChange(const State newState) const
     }
 }
 
-bool Giessanlage::setState(const State newState)
+bool Giessanlage::setState(const int channel, const State newState)
 {
-    if (!allowStateChange(newState))
+    if (!allowStateChange(channel, newState))
         return false;
 
     switch (newState)
     {
     case State::Idle:
-        this->resetWateringTimerInternal();
-        this->pumpTimer = 0;
-        break;
+        this->channels[channel].pumpTimer = 0;
+        this->channels[channel].state = newState;
+        // only reset the shared watering timer when no channel is still pumping
+        if (allChannelsIdle())
+            this->resetWateringTimerInternal();
+        return true;
 
     case State::PumpingAuto:
         this->wateringTimer = 0;
+        // fallthrough
     case State::PumpingManual:
-        this->resetPumpTimerInternal();
+        this->resetPumpTimerInternal(channel);
         break;
 
     default:
         break;
     }
 
-    this->state = newState;
+    this->channels[channel].state = newState;
     return true;
 }
 
 Giessanlage::State Giessanlage::getState() const
 {
-    return this->state;
+    return getState(0);
+}
+
+Giessanlage::State Giessanlage::getState(const int channel) const
+{
+    if (!isValidChannel(channel))
+        return State::Undefined;
+    return this->channels[channel].state;
 }
 
 bool Giessanlage::isPumping() const
 {
-    return this->state == State::PumpingAuto || this->state == State::PumpingManual;
+    for (int c = 0; c < CHANNEL_COUNT; ++c)
+    {
+        if (isPumping(c))
+            return true;
+    }
+    return false;
+}
+
+bool Giessanlage::isPumping(const int channel) const
+{
+    if (!isValidChannel(channel))
+        return false;
+    const State s = this->channels[channel].state;
+    return s == State::PumpingAuto || s == State::PumpingManual;
 }
 
 bool Giessanlage::setPumpTime(const unsigned long time)
@@ -73,7 +117,6 @@ bool Giessanlage::setPumpTime(const unsigned long time)
         return false;
 
     this->pumpTime = time;
-
     return true;
 }
 
@@ -82,9 +125,9 @@ unsigned long Giessanlage::getPumpTime() const
     return this->pumpTime;
 }
 
-void Giessanlage::resetPumpTimerInternal()
+void Giessanlage::resetPumpTimerInternal(const int channel)
 {
-    this->pumpTimer = this->pumpTime;
+    this->channels[channel].pumpTimer = this->pumpTime;
 }
 
 bool Giessanlage::setWateringInterval(const unsigned long time)
@@ -93,7 +136,6 @@ bool Giessanlage::setWateringInterval(const unsigned long time)
         return false;
 
     this->wateringTime = time;
-
     return true;
 }
 
@@ -104,7 +146,8 @@ unsigned long Giessanlage::getWateringInterval() const
 
 void Giessanlage::resetWateringTimerInternal()
 {
-    // substract pump time from watering interval to not shift the timer logic as only one timer activly runs
+    // subtract pump time from watering interval so pump-time and idle-time
+    // together equal the configured watering interval
     this->wateringTimer = this->wateringTime - this->pumpTime;
 }
 
@@ -114,13 +157,19 @@ bool Giessanlage::resetWateringTimer()
         return false;
 
     resetWateringTimerInternal();
-
     return true;
 }
 
 unsigned long Giessanlage::getRemainingPumpTime() const
 {
-    return this->pumpTimer;
+    return getRemainingPumpTime(0);
+}
+
+unsigned long Giessanlage::getRemainingPumpTime(const int channel) const
+{
+    if (!isValidChannel(channel))
+        return 0;
+    return this->channels[channel].pumpTimer;
 }
 
 unsigned long Giessanlage::getRemainingWateringInterval() const
@@ -128,48 +177,63 @@ unsigned long Giessanlage::getRemainingWateringInterval() const
     return this->wateringTimer;
 }
 
-void updateTimer(unsigned long &timer, const unsigned long delta)
+static void updateTimer(unsigned long &timer, const unsigned long delta)
 {
     if (timer > delta)
-    {
         timer -= delta;
-    }
-    else if (timer <= delta)
-    {
+    else
         timer = 0;
-    }
 }
 
 bool Giessanlage::tick(const unsigned long delta)
 {
-    // scheduled watering
     updateTimer(this->wateringTimer, delta);
-    // pump timer
-    updateTimer(this->pumpTimer, delta);
 
-    switch (this->state)
+    bool anyChange = false;
+    for (int c = 0; c < CHANNEL_COUNT; ++c)
     {
-    case State::Idle:
-        if (this->wateringTimer <= 0UL)
-            return this->setState(State::PumpingAuto);
-        return false;
-    case State::PumpingManual:
-    case State::PumpingAuto:
-        if (this->pumpTimer <= 0UL)
-            return this->setState(State::Idle);
-        return false;
+        updateTimer(this->channels[c].pumpTimer, delta);
 
-    default:
-        return false;
+        switch (this->channels[c].state)
+        {
+        case State::Idle:
+            if (this->wateringTimer <= 0UL)
+                anyChange |= setState(c, State::PumpingAuto);
+            break;
+        case State::PumpingManual:
+        case State::PumpingAuto:
+            if (this->channels[c].pumpTimer <= 0UL)
+                anyChange |= setState(c, State::Idle);
+            break;
+        default:
+            break;
+        }
     }
+    return anyChange;
 }
 
 bool Giessanlage::triggerPump()
 {
-    return setState(State::PumpingManual);
+    bool any = false;
+    for (int c = 0; c < CHANNEL_COUNT; ++c)
+        any |= setState(c, State::PumpingManual);
+    return any;
+}
+
+bool Giessanlage::triggerPump(const int channel)
+{
+    return setState(channel, State::PumpingManual);
 }
 
 bool Giessanlage::stopPump()
 {
-    return setState(State::Idle);
+    bool any = false;
+    for (int c = 0; c < CHANNEL_COUNT; ++c)
+        any |= setState(c, State::Idle);
+    return any;
+}
+
+bool Giessanlage::stopPump(const int channel)
+{
+    return setState(channel, State::Idle);
 }
