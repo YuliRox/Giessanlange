@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "Giessanlage.h"
+#include "DebouncedButton.h"
 
 Giessanlage anlage;
 unsigned long startTime = 0UL;
@@ -21,38 +22,12 @@ constexpr int PUMP_1_GPIO = 18;
 constexpr int PUMP_2_GPIO = 19;
 } // namespace
 
-struct DebouncedButton
-{
-    int pin;
-    int state = BUTTON_OPEN;
-    int lastReading = BUTTON_OPEN;
-    unsigned long lastChangeMs = 0;
-};
+DebouncedButton buttonPump1([] { return digitalRead(BUTTON_PUMP_1); });
+DebouncedButton buttonPump2([] { return digitalRead(BUTTON_PUMP_2); });
+DebouncedButton buttonCancel([] { return digitalRead(BUTTON_CANCEL); });
 
-DebouncedButton buttonPump1 { BUTTON_PUMP_1 };
-DebouncedButton buttonPump2 { BUTTON_PUMP_2 };
-DebouncedButton buttonCancel { BUTTON_CANCEL };
-
-const unsigned long debounceDelayMs = 100UL;
 const unsigned long outputRemainingWaitInterval = 60UL * 1000UL;
 unsigned long outputRemainingWait = 0;
-
-// returns true exactly once on each closing edge after debounce
-bool pollPressed(DebouncedButton &b, unsigned long now)
-{
-    int reading = digitalRead(b.pin);
-    if (reading != b.lastReading)
-        b.lastChangeMs = now;
-    b.lastReading = reading;
-
-    bool pressed = false;
-    if ((now - b.lastChangeMs) > debounceDelayMs && reading != b.state)
-    {
-        b.state = reading;
-        pressed = (b.state == BUTTON_CLOSED);
-    }
-    return pressed;
-}
 
 void togglePump(int channel)
 {
@@ -120,11 +95,11 @@ void loop()
     digitalWrite(PUMP_1_GPIO, anlage.isPumping(0) ? PUMP_ON : PUMP_OFF);
     digitalWrite(PUMP_2_GPIO, anlage.isPumping(1) ? PUMP_ON : PUMP_OFF);
 
-    if (pollPressed(buttonPump1, currentTime))
+    if (buttonPump1.poll(currentTime))
         togglePump(0);
-    if (pollPressed(buttonPump2, currentTime))
+    if (buttonPump2.poll(currentTime))
         togglePump(1);
-    if (pollPressed(buttonCancel, currentTime))
+    if (buttonCancel.poll(currentTime))
     {
         if (anlage.stopPump())
             Serial.println("Cancel: all pumps off");
