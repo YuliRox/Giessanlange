@@ -5,3 +5,6 @@
 .vscode/ipch
 **/~*
 *.bak
+schematics/giessanlage/.history/
+schematics/giessanlage/*.lck
+schematics/giessanlage/*.bak
