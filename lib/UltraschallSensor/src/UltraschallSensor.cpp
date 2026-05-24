@@ -87,6 +87,8 @@ bool UltraschallSensor::readDistanceCm(uint16_t &distanceCm, uint32_t timeoutMs)
         return false;
     }
 
+    parser.clear();
+
     const uint32_t startMs = millis();
 
     while ((millis() - startMs) < timeoutMs)

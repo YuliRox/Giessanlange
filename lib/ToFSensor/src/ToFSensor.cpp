@@ -22,6 +22,7 @@ bool ToFSensor::begin(TwoWire &wire)
     if (!sensor.init())
     {
         initialized = false;
+        lastReadTimedOut = false;
         return false;
     }
 
@@ -37,6 +38,7 @@ void ToFSensor::powerOff()
     digitalWrite(xshutPin, LOW);
     powered = false;
     initialized = false;
+    lastReadTimedOut = false;
 }
 
 void ToFSensor::powerOn()
@@ -53,13 +55,16 @@ bool ToFSensor::isPowered() const
 
 bool ToFSensor::readDistanceMm(uint16_t &distanceMm)
 {
+    lastReadTimedOut = false;
+
     if (!powered || !initialized)
     {
         return false;
     }
 
     distanceMm = sensor.readRangeContinuousMillimeters();
-    if (sensor.timeoutOccurred())
+    lastReadTimedOut = sensor.timeoutOccurred();
+    if (lastReadTimedOut)
     {
         return false;
     }
@@ -74,7 +79,7 @@ void ToFSensor::setTimeout(uint16_t timeoutMs)
 
 bool ToFSensor::didTimeout() const
 {
-    return sensor.timeoutOccurred();
+    return lastReadTimedOut;
 }
 
 bool ToFSensor::setMeasurementTimingBudgetUs(uint32_t budgetUs)

@@ -34,6 +34,7 @@ private:
 
     bool powered = false;
     bool initialized = false;
+    bool lastReadTimedOut = false;
 
     VL53L0X sensor;
 };
