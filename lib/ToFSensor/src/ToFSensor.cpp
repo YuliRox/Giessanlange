@@ -1,15 +1,15 @@
-#include "TofVl53l0x.h"
+#include "ToFSensor.h"
 
 #ifdef ARDUINO
 
-TofVl53l0x::TofVl53l0x(uint8_t xshutPin, uint8_t i2cAddress, uint16_t bootDelayMs)
+ToFSensor::ToFSensor(uint8_t xshutPin, uint8_t i2cAddress, uint16_t bootDelayMs)
     : xshutPin(xshutPin),
       i2cAddress(i2cAddress),
       bootDelayMs(bootDelayMs)
 {
 }
 
-bool TofVl53l0x::begin(TwoWire &wire)
+bool ToFSensor::begin(TwoWire &wire)
 {
     pinMode(xshutPin, OUTPUT);
 
@@ -32,26 +32,26 @@ bool TofVl53l0x::begin(TwoWire &wire)
     return true;
 }
 
-void TofVl53l0x::powerOff()
+void ToFSensor::powerOff()
 {
     digitalWrite(xshutPin, LOW);
     powered = false;
     initialized = false;
 }
 
-void TofVl53l0x::powerOn()
+void ToFSensor::powerOn()
 {
     digitalWrite(xshutPin, HIGH);
     powered = true;
     delay(bootDelayMs);
 }
 
-bool TofVl53l0x::isPowered() const
+bool ToFSensor::isPowered() const
 {
     return powered;
 }
 
-bool TofVl53l0x::readDistanceMm(uint16_t &distanceMm)
+bool ToFSensor::readDistanceMm(uint16_t &distanceMm)
 {
     if (!powered || !initialized)
     {
@@ -67,17 +67,17 @@ bool TofVl53l0x::readDistanceMm(uint16_t &distanceMm)
     return true;
 }
 
-void TofVl53l0x::setTimeout(uint16_t timeoutMs)
+void ToFSensor::setTimeout(uint16_t timeoutMs)
 {
     sensor.setTimeout(timeoutMs);
 }
 
-bool TofVl53l0x::didTimeout() const
+bool ToFSensor::didTimeout() const
 {
     return sensor.timeoutOccurred();
 }
 
-bool TofVl53l0x::setMeasurementTimingBudgetUs(uint32_t budgetUs)
+bool ToFSensor::setMeasurementTimingBudgetUs(uint32_t budgetUs)
 {
     if (!initialized)
     {
@@ -88,7 +88,7 @@ bool TofVl53l0x::setMeasurementTimingBudgetUs(uint32_t budgetUs)
     return true;
 }
 
-bool TofVl53l0x::setSignalRateLimitMcps(float limitMcps)
+bool ToFSensor::setSignalRateLimitMcps(float limitMcps)
 {
     if (!initialized)
     {

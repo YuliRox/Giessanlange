@@ -1,5 +1,5 @@
-#ifndef TOF_VL53L0X_H
-#define TOF_VL53L0X_H
+#ifndef TOF_SENSOR_H
+#define TOF_SENSOR_H
 
 #include <stdint.h>
 
@@ -8,10 +8,10 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-class TofVl53l0x
+class ToFSensor
 {
 public:
-    explicit TofVl53l0x(uint8_t xshutPin, uint8_t i2cAddress = 0x29, uint16_t bootDelayMs = 5U);
+    explicit ToFSensor(uint8_t xshutPin, uint8_t i2cAddress = 0x29, uint16_t bootDelayMs = 5U);
 
     bool begin(TwoWire &wire = Wire);
 
