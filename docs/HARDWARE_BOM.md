@@ -43,9 +43,9 @@ KiCad references:
 
 ## Sensors
 
-- `1x` ultrasonic sensor marked `A0221AM 38M1056`
+- `1x` ultrasonic sensor marked `A0221AM 38M1056` (https://www.dfrobot.com/product-1935.html)
 - `1x` `TOF200C-VL53L0X`
-- `1x` `Chirp` soil moisture sensor, version `2.7.5`
+- `1x` `Chirp` soil moisture sensor, version `2.7.5` (https://wemakethings.net/chirp/)
 
 ## I2C Support Parts
 
