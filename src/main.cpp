@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <nano_pins.h>
+#include <esp32-hal-adc.h>
 #include "Giessanlage.h"
 
 // Giessanlage anlage(30UL * 1000UL, 5UL * 1000UL); // Default: 24h Interval, 30sek gießen
@@ -7,15 +7,24 @@ Giessanlage anlage; // Default: 24h Interval, 30sek gießen
 unsigned long startTime = 0UL;
 unsigned long elapsedTime = 0UL;
 
-#define BUTTON_CLOSED LOW
-#define BUTTON_OPEN HIGH
-#define PUMP_ON LOW
-#define PUMP_OFF HIGH
-#define POTI_PUMP_INTERVAL A2
-#define BUTTON_MANUAL D3
-#define BUTTON_CANCEL D2
-#define PUMP_RELAIS D4
-#define SWITCH_12H D5
+namespace
+{
+constexpr int BUTTON_CLOSED = LOW;
+constexpr int BUTTON_OPEN = HIGH;
+
+// Pump outputs drive N-MOSFET gates in the current ESP32-C6 design.
+constexpr int PUMP_ON = HIGH;
+constexpr int PUMP_OFF = LOW;
+
+constexpr int POTI_PUMP_INTERVAL = 2;
+constexpr int BUTTON_MANUAL = 21;
+constexpr int BUTTON_CANCEL = 22;
+constexpr int SWITCH_12H = 23;
+constexpr int PUMP_1_GPIO = 18;
+constexpr int PUMP_2_GPIO = 19;
+
+constexpr long ANALOG_READ_MAX = 4095L;
+} // namespace
 
 int switch12hState = BUTTON_OPEN;
 int lastbuttonStateInterval = BUTTON_OPEN;
@@ -43,12 +52,15 @@ void setup()
   pinMode(BUTTON_MANUAL, INPUT_PULLUP);
   pinMode(BUTTON_CANCEL, INPUT_PULLUP);
   pinMode(SWITCH_12H, INPUT_PULLUP);
-  pinMode(PUMP_RELAIS, OUTPUT);
-  digitalWrite(PUMP_RELAIS, PUMP_OFF);
+  pinMode(PUMP_1_GPIO, OUTPUT);
+  pinMode(PUMP_2_GPIO, OUTPUT);
+  digitalWrite(PUMP_1_GPIO, PUMP_OFF);
+  digitalWrite(PUMP_2_GPIO, PUMP_OFF);
 
   delay(800);
 
-  Serial.begin(9600);
+  analogReadResolution(12);
+  Serial.begin(115200);
 
   // put your setup code here, to run once:
   startTime = millis();
@@ -79,7 +91,7 @@ void setup()
 
 unsigned long scaleToTime(long reading)
 {
-  long fromPoti = map(reading, 0L, 1023L, minPumpInterval, maxPumpInterval);
+  long fromPoti = map(reading, 0L, ANALOG_READ_MAX, minPumpInterval, maxPumpInterval);
   return (unsigned long)fromPoti * 1000UL;
 }
 
@@ -107,13 +119,15 @@ void loop()
 
   if (anlage.isPumping())
   {
-    digitalWrite(PUMP_RELAIS, PUMP_ON);
-    Serial.println("Power to the Pump!");
+    digitalWrite(PUMP_1_GPIO, PUMP_ON);
+    digitalWrite(PUMP_2_GPIO, PUMP_ON);
+    Serial.println("Power to the Pumps!");
   }
   else
   {
-    digitalWrite(PUMP_RELAIS, PUMP_OFF);
-    //    Serial.println("Depower the Pump!");
+    digitalWrite(PUMP_1_GPIO, PUMP_OFF);
+    digitalWrite(PUMP_2_GPIO, PUMP_OFF);
+    // Serial.println("Depower the Pumps!");
   }
 
   int readingButtonManual = digitalRead(BUTTON_MANUAL);

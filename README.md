@@ -7,89 +7,98 @@ The notes below are reconstructed from the firmware and should be treated as the
 
 ## Controller
 
-- Target board: Arduino Nano / ATmega328
+- Target board: ESP32-C6-DevKitC-1
 - Source: `platformio.ini`
 
 ## Pin Mapping
 
-- `A2`: potentiometer for pump runtime per watering cycle
-- `D3`: manual start button
-- `D2`: cancel/stop button
-- `D4`: pump relay control
-- `D5`: 12h/24h interval switch
+- `GPIO2` (ADC): potentiometer for pump runtime per watering cycle
+- `GPIO21`: manual start button
+- `GPIO22`: cancel/stop button
+- `GPIO23`: 12h/24h interval switch
+- `GPIO18`: pump 1 MOSFET gate control
+- `GPIO19`: pump 2 MOSFET gate control
+
+## About Old Arduino Labels (e.g. `D1`)
+
+Old labels like `D1`, `D2`, `A2` refer to Arduino Nano pin naming and are no longer the source of truth.
+For the ESP32-C6 firmware in this repo, use only the explicit `GPIO` numbers listed above.
+`D1` is currently not referenced by the firmware.
 
 ## Expected Wiring Behavior
 
-- `D2`, `D3`, and `D5` are configured as `INPUT_PULLUP`
+- `GPIO21`, `GPIO22`, and `GPIO23` are configured as `INPUT_PULLUP`
 - That means each button or switch input is expected to connect the pin to `GND` when closed
-- The pump relay is active-low
-- That means `D4 = LOW` turns the pump on and `D4 = HIGH` turns it off
+- Pump outputs are active-high for MOSFET gate drive
+- That means `GPIO18/19 = HIGH` turns the respective pump on, `LOW` turns it off
 
 ## Functional Behavior
 
-- The potentiometer on `A2` sets how long the pump runs each time it is activated
+- The potentiometer on `GPIO2` sets how long the pump runs each time it is activated
 - The runtime is mapped from about `5s` to `60s`
 - It does not change the 12h/24h watering interval
-- The button on `D3` starts a manual pump cycle
-- The button on `D2` stops the current pump cycle
-- The switch on `D5` selects the watering interval
-- `D5 = HIGH` selects `12h`
-- `D5 = LOW` selects `24h`
+- The button on `GPIO21` starts a manual pump cycle
+- The button on `GPIO22` stops the current pump cycle
+- The switch on `GPIO23` selects the watering interval
+- `GPIO23 = HIGH` selects `12h`
+- `GPIO23 = LOW` selects `24h`
 
 ## Likely External Connections
 
-- Potentiometer: one outer pin to `5V`, the other outer pin to `GND`, and the wiper to `A2`
-- Manual button: one side to `D3`, the other side to `GND`
-- Cancel button: one side to `D2`, the other side to `GND`
-- 12h/24h switch: one side to `D5`, the other side to `GND`
-- Relay module: control input to `D4`, module `GND` to Nano `GND`, and module `VCC` to the supply expected by the relay hardware used
+- Potentiometer: one outer pin to `3V3`, the other outer pin to `GND`, and the wiper to `GPIO2`
+- Manual button: one side to `GPIO21`, the other side to `GND`
+- Cancel button: one side to `GPIO22`, the other side to `GND`
+- 12h/24h switch: one side to `GPIO23`, the other side to `GND`
+- Pump channel 1: `GPIO18` to MOSFET gate driver path
+- Pump channel 2: `GPIO19` to MOSFET gate driver path
+- Common ground between ESP32-C6 and pump power stage is required
 
 ## ASCII Wiring Sketch
 
 ```text
-                           +----------------------+
-                           |     Arduino Nano     |
-                           |                      |
-             Pot wiper ----| A2                   |
-      Manual button   -----| D3                   |
-      Cancel button   -----| D2                   |
-     Interval switch  -----| D5                   |
-       Relay control  -----| D4                   |
-                           |                      |
-                  5V  -----| 5V                   |
-                 GND  -----| GND                  |
-                           +----------------------+
+                           +---------------------------+
+                           |     ESP32-C6-DevKitC-1    |
+                           |                           |
+             Pot wiper ----| GPIO2 (ADC)              |
+      Manual button   -----| GPIO21                   |
+      Cancel button   -----| GPIO22                   |
+     Interval switch  -----| GPIO23                   |
+       Pump 1 control -----| GPIO18                   |
+       Pump 2 control -----| GPIO19                   |
+                           |                           |
+                 3V3  -----| 3V3                      |
+                 GND  -----| GND                      |
+                           +---------------------------+
 
 Potentiometer
-  outer pin 1 -> 5V
+  outer pin 1 -> 3V3
   outer pin 2 -> GND
-  wiper       -> A2
+  wiper       -> GPIO2
 
 Manual button
-  D3 ---[ button ]--- GND
+  GPIO21 ---[ button ]--- GND
 
 Cancel button
-  D2 ---[ button ]--- GND
+  GPIO22 ---[ button ]--- GND
 
 12h/24h switch
-  D5 ---[ switch ]--- GND
+  GPIO23 ---[ switch ]--- GND
 
-Relay module
-  D4  -> IN
-  GND -> GND
-  VCC -> relay supply VCC
+Pump stage
+  GPIO18 -> Pump 1 gate drive path
+  GPIO19 -> Pump 2 gate drive path
+  ESP GND -> pump power GND (common reference)
 
 Pump power path
-  Not documented in the repo.
-  Likely switched externally by the relay module.
+  Switched externally via MOSFET power stage.
 ```
 
 ## What Is Still Missing
 
 - Exact pump voltage
-- Exact relay module type
-- Power path between solar panel, charge controller, battery, Nano, and pump
-- Whether a dedicated transistor, MOSFET, or relay board is used
+- Exact MOSFET part numbers and resistor values as physically assembled
+- Power path between solar panel, charge controller, battery, ESP32-C6, and pump
+- Final power path between solar charge controller USB output and ESP32-C6 input
 - Whether the OLED helper library is planned hardware or leftover code
 
 ## Code References
