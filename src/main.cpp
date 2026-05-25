@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include "Giessanlage.h"
+#include "DebouncedButton.h"
+
+using Channel = Giessanlage::Channel;
 
 Giessanlage anlage;
 unsigned long startTime = 0UL;
@@ -21,53 +24,32 @@ constexpr int PUMP_1_GPIO = 18;
 constexpr int PUMP_2_GPIO = 19;
 } // namespace
 
-struct DebouncedButton
-{
-    int pin;
-    int state = BUTTON_OPEN;
-    int lastReading = BUTTON_OPEN;
-    unsigned long lastChangeMs = 0;
-};
+DebouncedButton buttonPump1([] { return digitalRead(BUTTON_PUMP_1); });
+DebouncedButton buttonPump2([] { return digitalRead(BUTTON_PUMP_2); });
+DebouncedButton buttonCancel([] { return digitalRead(BUTTON_CANCEL); });
 
-DebouncedButton buttonPump1 { BUTTON_PUMP_1 };
-DebouncedButton buttonPump2 { BUTTON_PUMP_2 };
-DebouncedButton buttonCancel { BUTTON_CANCEL };
-
-const unsigned long debounceDelayMs = 100UL;
 const unsigned long outputRemainingWaitInterval = 60UL * 1000UL;
 unsigned long outputRemainingWait = 0;
 
-// returns true exactly once on each closing edge after debounce
-bool pollPressed(DebouncedButton &b, unsigned long now)
+static int channelLabel(Channel ch)
 {
-    int reading = digitalRead(b.pin);
-    if (reading != b.lastReading)
-        b.lastChangeMs = now;
-    b.lastReading = reading;
-
-    bool pressed = false;
-    if ((now - b.lastChangeMs) > debounceDelayMs && reading != b.state)
-    {
-        b.state = reading;
-        pressed = (b.state == BUTTON_CLOSED);
-    }
-    return pressed;
+    return static_cast<int>(ch) + 1;
 }
 
-void togglePump(int channel)
+void togglePump(Channel channel)
 {
     if (anlage.isPumping(channel))
     {
         anlage.stopPump(channel);
         Serial.print("Pump ");
-        Serial.print(channel + 1);
+        Serial.print(channelLabel(channel));
         Serial.println(": off");
     }
     else
     {
         anlage.triggerPump(channel);
         Serial.print("Pump ");
-        Serial.print(channel + 1);
+        Serial.print(channelLabel(channel));
         Serial.println(": on");
     }
 }
@@ -93,8 +75,11 @@ void setup()
     delay(1000);
 
     Serial.println("Hello World Giessanlange!");
-    Serial.print("PumpTime: ");
-    Serial.print(anlage.getPumpTime());
+    Serial.print("PumpTime Ch1: ");
+    Serial.print(anlage.getPumpTime(Channel::One));
+    Serial.println("ms");
+    Serial.print("PumpTime Ch2: ");
+    Serial.print(anlage.getPumpTime(Channel::Two));
     Serial.println("ms");
     Serial.print("WateringInterval: ");
     Serial.print(anlage.getWateringInterval());
@@ -117,22 +102,22 @@ void loop()
 
     anlage.tick(elapsedTime);
 
-    digitalWrite(PUMP_1_GPIO, anlage.isPumping(0) ? PUMP_ON : PUMP_OFF);
-    digitalWrite(PUMP_2_GPIO, anlage.isPumping(1) ? PUMP_ON : PUMP_OFF);
+    digitalWrite(PUMP_1_GPIO, anlage.isPumping(Channel::One) ? PUMP_ON : PUMP_OFF);
+    digitalWrite(PUMP_2_GPIO, anlage.isPumping(Channel::Two) ? PUMP_ON : PUMP_OFF);
 
-    if (pollPressed(buttonPump1, currentTime))
-        togglePump(0);
-    if (pollPressed(buttonPump2, currentTime))
-        togglePump(1);
-    if (pollPressed(buttonCancel, currentTime))
+    if (buttonPump1.poll(currentTime))
+        togglePump(Channel::One);
+    if (buttonPump2.poll(currentTime))
+        togglePump(Channel::Two);
+    if (buttonCancel.poll(currentTime))
     {
-        if (anlage.stopPump())
+        if (anlage.stopAllPumps())
             Serial.println("Cancel: all pumps off");
     }
 
     if (outputRemainingWait >= outputRemainingWaitInterval)
     {
-        if (!anlage.isPumping())
+        if (!anlage.isAnyPumping())
         {
             unsigned long remainTime = anlage.getRemainingWateringInterval();
             Serial.print("Remaining until next watering: ");

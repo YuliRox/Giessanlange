@@ -5,15 +5,20 @@
 class Giessanlage
 {
 public:
-    static const int CHANNEL_COUNT = 2;
+    enum class Channel : int
+    {
+        One = 0,
+        Two = 1,
+    };
 
     static const unsigned long INTERVAL_30S = 30UL * 1000UL;
     static const unsigned long INTERVAL_12H = 12UL * 60UL * 60UL * 1000UL;
     static const unsigned long INTERVAL_24H = 2UL * INTERVAL_12H;
 
     Giessanlage(
-        const unsigned long wateringTime = INTERVAL_24H,
-        const unsigned long pumpTime = INTERVAL_30S);
+        unsigned long wateringTime = INTERVAL_24H,
+        unsigned long pumpTimeCh1 = INTERVAL_30S,
+        unsigned long pumpTimeCh2 = INTERVAL_30S);
 
     enum State : int
     {
@@ -24,60 +29,65 @@ public:
         PumpingAuto,
     };
 
-    State getState(const int channel) const;
+    State getState(Channel channel) const;
 
     /// @brief true if any channel is currently pumping
-    bool isPumping() const;
-    bool isPumping(const int channel) const;
+    bool isAnyPumping() const;
+    bool isPumping(Channel channel) const;
 
-    bool allowStateChange(const int channel, const State newState) const;
+    bool allowStateChange(Channel channel, State newState) const;
 
     /// @brief central logic update loop
     /// @param delta time in ms since last update
     /// @return true if any channel changed state
-    bool tick(const unsigned long delta);
+    bool tick(unsigned long delta);
 
     /// @brief start a manual pump cycle on all idle channels
     /// @return true if at least one channel transitioned
-    bool triggerPump();
+    bool triggerAllPumps();
     /// @brief start a manual pump cycle on the given channel
-    bool triggerPump(const int channel);
+    bool triggerPump(Channel channel);
 
     /// @brief stop pumping on all channels currently pumping
     /// @return true if at least one channel transitioned
-    bool stopPump();
+    bool stopAllPumps();
     /// @brief stop pumping on the given channel
-    bool stopPump(const int channel);
+    bool stopPump(Channel channel);
 
-    bool setPumpTime(const unsigned long time);
-    unsigned long getPumpTime() const;
+    bool setPumpTime(Channel channel, unsigned long time);
+    unsigned long getPumpTime(Channel channel) const;
 
-    bool setWateringInterval(const unsigned long time);
+    bool setWateringInterval(unsigned long time);
     unsigned long getWateringInterval() const;
     bool resetWateringTimer();
 
-    unsigned long getRemainingPumpTime(const int channel) const;
+    unsigned long getRemainingPumpTime(Channel channel) const;
     unsigned long getRemainingWateringInterval() const;
 
 private:
-    struct Channel
+    static constexpr int CHANNEL_COUNT = 2;
+
+    struct ChannelData
     {
         State state = State::Undefined;
+        unsigned long pumpTime = 0;
         unsigned long pumpTimer = 0;
     };
 
-    Channel channels[CHANNEL_COUNT];
+    ChannelData channels[CHANNEL_COUNT];
 
     unsigned long wateringTime = 0;
-    unsigned long pumpTime = 0;
     unsigned long wateringTimer = 0;
 
-    bool setState(const int channel, const State newState);
-    bool isValidChannel(const int channel) const;
+    static int idx(Channel c) { return static_cast<int>(c); }
+
+    bool setState(Channel channel, State newState);
     bool allChannelsIdle() const;
+    unsigned long maxPumpTime() const;
+    bool tickChannel(Channel channel, unsigned long delta);
 
     void resetWateringTimerInternal();
-    void resetPumpTimerInternal(const int channel);
+    void resetPumpTimerInternal(Channel channel);
 };
 
 #endif
