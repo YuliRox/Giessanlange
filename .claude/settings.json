@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/secrets.ini)",
+      "Edit(**/secrets.ini)",
+      "Write(**/secrets.ini)",
+      "NotebookEdit(**/secrets.ini)",
+      "Grep(**/secrets.ini)",
+      "Glob(**/secrets.ini)",
+      "Bash(cat * secrets.ini*)",
+      "Bash(head * secrets.ini*)",
+      "Bash(tail * secrets.ini*)",
+      "Bash(grep * secrets.ini*)",
+      "Bash(rg * secrets.ini*)",
+      "Bash(sed * secrets.ini*)",
+      "Bash(awk * secrets.ini*)",
+      "Bash(less * secrets.ini*)",
+      "Bash(more * secrets.ini*)",
+      "Bash(xxd * secrets.ini*)",
+      "Bash(tee * secrets.ini*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|NotebookEdit|Bash|PowerShell|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/block-secrets.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

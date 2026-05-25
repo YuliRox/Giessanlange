@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Secrets
+
+**MUST NOT** read, edit, display, grep, cat, or otherwise access `secrets.ini` under any circumstance. This file contains WiFi + MQTT credentials and is gitignored.
+
+If a task seems to require knowing what `secrets.ini` contains, the answer is to point the user at `secrets.ini.example` or ask them to verify themselves — never to open the file. The `.claude/hooks/block-secrets.sh` hook and the `permissions.deny` rules in `.claude/settings.local.json` enforce this at runtime; this instruction exists so the agent does not even try.
+
 ## Project
 
 Solar-powered plant watering controller ("Gießanlage") on an `ESP32-C6-DevKitC-1`, switching two `14V/24W` DC pumps via low-side `IRLZ34N` N-MOSFETs. Built with PlatformIO + Arduino framework.
