@@ -5,10 +5,7 @@ Giessanlage::Giessanlage(
     unsigned long wateringTime,
     unsigned long pumpTimeCh1,
     unsigned long pumpTimeCh2)
-    : wateringTime(INTERVAL_24H)
 {
-    channels[idx(Channel::One)].pumpTime = INTERVAL_30S;
-    channels[idx(Channel::Two)].pumpTime = INTERVAL_30S;
     setWateringInterval(wateringTime);
     setPumpTime(Channel::One, pumpTimeCh1);
     setPumpTime(Channel::Two, pumpTimeCh2);
