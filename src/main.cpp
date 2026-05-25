@@ -132,12 +132,23 @@ void setup()
 
     secrets = new Secrets(std::move(store), build);
 
+    // Configure the radio once for home-network station use. Persistent
+    // credential storage is disabled because Secrets / NVS owns that;
+    // letting the WiFi class double-write its own copy on every begin()
+    // would just burn flash. Auto-reconnect lets the framework re-
+    // associate after a transient AP drop without us re-issuing begin();
+    // the WifiManager's Connected->Disconnected transition then only
+    // fires on prolonged outages.
+    WiFi.persistent(false);
+    WiFi.mode(WIFI_STA);
+    WiFi.setHostname("giessanlage");
+    WiFi.setAutoReconnect(true);
+
     wifi = new WifiManager(
         [](const std::string &ssid, const std::string &pass) {
             Serial.print("WiFi: connecting to '");
             Serial.print(ssid.c_str());
             Serial.println("'");
-            WiFi.mode(WIFI_STA);
             WiFi.begin(ssid.c_str(), pass.c_str());
         },
         []() { return WiFi.status() == WL_CONNECTED; },
