@@ -2,6 +2,8 @@
 #include "Giessanlage.h"
 #include "DebouncedButton.h"
 
+using Channel = Giessanlage::Channel;
+
 Giessanlage anlage;
 unsigned long startTime = 0UL;
 unsigned long elapsedTime = 0UL;
@@ -29,20 +31,25 @@ DebouncedButton buttonCancel([] { return digitalRead(BUTTON_CANCEL); });
 const unsigned long outputRemainingWaitInterval = 60UL * 1000UL;
 unsigned long outputRemainingWait = 0;
 
-void togglePump(int channel)
+static int channelLabel(Channel ch)
+{
+    return static_cast<int>(ch) + 1;
+}
+
+void togglePump(Channel channel)
 {
     if (anlage.isPumping(channel))
     {
         anlage.stopPump(channel);
         Serial.print("Pump ");
-        Serial.print(channel + 1);
+        Serial.print(channelLabel(channel));
         Serial.println(": off");
     }
     else
     {
         anlage.triggerPump(channel);
         Serial.print("Pump ");
-        Serial.print(channel + 1);
+        Serial.print(channelLabel(channel));
         Serial.println(": on");
     }
 }
@@ -68,8 +75,11 @@ void setup()
     delay(1000);
 
     Serial.println("Hello World Giessanlange!");
-    Serial.print("PumpTime: ");
-    Serial.print(anlage.getPumpTime());
+    Serial.print("PumpTime Ch1: ");
+    Serial.print(anlage.getPumpTime(Channel::One));
+    Serial.println("ms");
+    Serial.print("PumpTime Ch2: ");
+    Serial.print(anlage.getPumpTime(Channel::Two));
     Serial.println("ms");
     Serial.print("WateringInterval: ");
     Serial.print(anlage.getWateringInterval());
@@ -92,22 +102,24 @@ void loop()
 
     anlage.tick(elapsedTime);
 
-    digitalWrite(PUMP_1_GPIO, anlage.isPumping(0) ? PUMP_ON : PUMP_OFF);
-    digitalWrite(PUMP_2_GPIO, anlage.isPumping(1) ? PUMP_ON : PUMP_OFF);
+    digitalWrite(PUMP_1_GPIO, anlage.isPumping(Channel::One) ? PUMP_ON : PUMP_OFF);
+    digitalWrite(PUMP_2_GPIO, anlage.isPumping(Channel::Two) ? PUMP_ON : PUMP_OFF);
 
     if (buttonPump1.poll(currentTime))
-        togglePump(0);
+        togglePump(Channel::One);
     if (buttonPump2.poll(currentTime))
-        togglePump(1);
+        togglePump(Channel::Two);
     if (buttonCancel.poll(currentTime))
     {
-        if (anlage.stopAllPumps())
+        const bool stopped1 = anlage.stopPump(Channel::One);
+        const bool stopped2 = anlage.stopPump(Channel::Two);
+        if (stopped1 || stopped2)
             Serial.println("Cancel: all pumps off");
     }
 
     if (outputRemainingWait >= outputRemainingWaitInterval)
     {
-        if (!anlage.isAnyPumping())
+        if (!anlage.isPumping(Channel::One) && !anlage.isPumping(Channel::Two))
         {
             unsigned long remainTime = anlage.getRemainingWateringInterval();
             Serial.print("Remaining until next watering: ");
