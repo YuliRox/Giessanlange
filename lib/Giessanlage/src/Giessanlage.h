@@ -84,6 +84,7 @@ private:
     bool setState(Channel channel, State newState);
     bool allChannelsIdle() const;
     unsigned long maxPumpTime() const;
+    bool tickChannel(Channel channel, unsigned long delta);
 
     void resetWateringTimerInternal();
     void resetPumpTimerInternal(Channel channel);

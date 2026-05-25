@@ -7,32 +7,26 @@ Giessanlage::Giessanlage(
     unsigned long pumpTimeCh2)
     : wateringTime(INTERVAL_24H)
 {
-    channels[0].pumpTime = INTERVAL_30S;
-    channels[1].pumpTime = INTERVAL_30S;
+    channels[idx(Channel::One)].pumpTime = INTERVAL_30S;
+    channels[idx(Channel::Two)].pumpTime = INTERVAL_30S;
     setWateringInterval(wateringTime);
     setPumpTime(Channel::One, pumpTimeCh1);
     setPumpTime(Channel::Two, pumpTimeCh2);
-    for (int c = 0; c < CHANNEL_COUNT; ++c)
-        setState(static_cast<Channel>(c), State::Idle);
+    setState(Channel::One, State::Idle);
+    setState(Channel::Two, State::Idle);
 }
 
 bool Giessanlage::allChannelsIdle() const
 {
-    for (int c = 0; c < CHANNEL_COUNT; ++c)
-    {
-        if (this->channels[c].state != State::Idle)
-            return false;
-    }
-    return true;
+    return channels[idx(Channel::One)].state == State::Idle &&
+           channels[idx(Channel::Two)].state == State::Idle;
 }
 
 unsigned long Giessanlage::maxPumpTime() const
 {
-    unsigned long m = 0;
-    for (int c = 0; c < CHANNEL_COUNT; ++c)
-        if (this->channels[c].pumpTime > m)
-            m = this->channels[c].pumpTime;
-    return m;
+    const unsigned long a = channels[idx(Channel::One)].pumpTime;
+    const unsigned long b = channels[idx(Channel::Two)].pumpTime;
+    return (a > b) ? a : b;
 }
 
 bool Giessanlage::allowStateChange(Channel channel, const State newState) const
@@ -93,12 +87,7 @@ Giessanlage::State Giessanlage::getState(Channel channel) const
 
 bool Giessanlage::isAnyPumping() const
 {
-    for (int c = 0; c < CHANNEL_COUNT; ++c)
-    {
-        if (isPumping(static_cast<Channel>(c)))
-            return true;
-    }
-    return false;
+    return isPumping(Channel::One) || isPumping(Channel::Two);
 }
 
 bool Giessanlage::isPumping(Channel channel) const
@@ -176,40 +165,43 @@ static void updateTimer(unsigned long &timer, const unsigned long delta)
         timer = 0;
 }
 
+bool Giessanlage::tickChannel(Channel channel, unsigned long delta)
+{
+    ChannelData &ch = this->channels[idx(channel)];
+    updateTimer(ch.pumpTimer, delta);
+
+    switch (ch.state)
+    {
+    case State::Idle:
+        if (this->wateringTimer == 0UL)
+            return setState(channel, State::PumpingAuto);
+        break;
+    case State::PumpingManual:
+    case State::PumpingAuto:
+        if (ch.pumpTimer == 0UL)
+            return setState(channel, State::Idle);
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
 bool Giessanlage::tick(unsigned long delta)
 {
     updateTimer(this->wateringTimer, delta);
 
     bool anyChange = false;
-    for (int c = 0; c < CHANNEL_COUNT; ++c)
-    {
-        updateTimer(this->channels[c].pumpTimer, delta);
-
-        const Channel ch = static_cast<Channel>(c);
-        switch (this->channels[c].state)
-        {
-        case State::Idle:
-            if (this->wateringTimer == 0UL)
-                anyChange |= setState(ch, State::PumpingAuto);
-            break;
-        case State::PumpingManual:
-        case State::PumpingAuto:
-            if (this->channels[c].pumpTimer == 0UL)
-                anyChange |= setState(ch, State::Idle);
-            break;
-        default:
-            break;
-        }
-    }
+    anyChange |= tickChannel(Channel::One, delta);
+    anyChange |= tickChannel(Channel::Two, delta);
     return anyChange;
 }
 
 bool Giessanlage::triggerAllPumps()
 {
-    bool any = false;
-    for (int c = 0; c < CHANNEL_COUNT; ++c)
-        any |= setState(static_cast<Channel>(c), State::PumpingManual);
-    return any;
+    const bool a = setState(Channel::One, State::PumpingManual);
+    const bool b = setState(Channel::Two, State::PumpingManual);
+    return a || b;
 }
 
 bool Giessanlage::triggerPump(Channel channel)
@@ -219,10 +211,9 @@ bool Giessanlage::triggerPump(Channel channel)
 
 bool Giessanlage::stopAllPumps()
 {
-    bool any = false;
-    for (int c = 0; c < CHANNEL_COUNT; ++c)
-        any |= setState(static_cast<Channel>(c), State::Idle);
-    return any;
+    const bool a = setState(Channel::One, State::Idle);
+    const bool b = setState(Channel::Two, State::Idle);
+    return a || b;
 }
 
 bool Giessanlage::stopPump(Channel channel)
