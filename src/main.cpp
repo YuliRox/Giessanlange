@@ -111,15 +111,13 @@ void loop()
         togglePump(Channel::Two);
     if (buttonCancel.poll(currentTime))
     {
-        const bool stopped1 = anlage.stopPump(Channel::One);
-        const bool stopped2 = anlage.stopPump(Channel::Two);
-        if (stopped1 || stopped2)
+        if (anlage.stopAllPumps())
             Serial.println("Cancel: all pumps off");
     }
 
     if (outputRemainingWait >= outputRemainingWaitInterval)
     {
-        if (!anlage.isPumping(Channel::One) && !anlage.isPumping(Channel::Two))
+        if (!anlage.isAnyPumping())
         {
             unsigned long remainTime = anlage.getRemainingWateringInterval();
             Serial.print("Remaining until next watering: ");

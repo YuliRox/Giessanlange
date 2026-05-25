@@ -30,7 +30,11 @@ public:
     };
 
     State getState(Channel channel) const;
+
+    /// @brief true if any channel is currently pumping
+    bool isAnyPumping() const;
     bool isPumping(Channel channel) const;
+
     bool allowStateChange(Channel channel, State newState) const;
 
     /// @brief central logic update loop
@@ -38,9 +42,15 @@ public:
     /// @return true if any channel changed state
     bool tick(unsigned long delta);
 
+    /// @brief start a manual pump cycle on all idle channels
+    /// @return true if at least one channel transitioned
+    bool triggerAllPumps();
     /// @brief start a manual pump cycle on the given channel
     bool triggerPump(Channel channel);
 
+    /// @brief stop pumping on all channels currently pumping
+    /// @return true if at least one channel transitioned
+    bool stopAllPumps();
     /// @brief stop pumping on the given channel
     bool stopPump(Channel channel);
 
