@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include <WiFi.h>
+#include <map>
+#include <string>
 
 #include "Giessanlage.h"
 #include "DebouncedButton.h"
@@ -38,13 +40,18 @@ DebouncedButton buttonCancel([] { return digitalRead(BUTTON_CANCEL); });
 
 Preferences prefs;
 
-// Lazily initialised after Preferences.begin() succeeds.
+// RAM-only fallback store used when NVS init fails. Lets the device run
+// on build-time credentials even with a corrupted Preferences partition;
+// see setup() for the fallback wiring and the rationale logged at boot.
+static std::map<std::string, std::string> ramFallbackStore;
+
+// Lazily initialised after Preferences.begin() succeeds (or its fallback
+// kicks in).
 Secrets *secrets = nullptr;
 WifiManager *wifi = nullptr;
 
 const unsigned long outputRemainingWaitInterval = 60UL * 1000UL;
 unsigned long outputRemainingWait = 0;
-WifiManager::State lastWifiState = WifiManager::State::Disconnected;
 
 static int channelLabel(Channel ch)
 {
@@ -111,16 +118,42 @@ void setup()
     Serial.print(anlage.getWateringInterval());
     Serial.println("ms");
 
-    prefs.begin(PREFS_NAMESPACE, /*readOnly=*/false);
+    // Preferences.begin() can fail when the NVS partition is corrupted,
+    // the namespace is invalid, or flash is out of free entries. The
+    // failure is silent at the Arduino-API level — every subsequent
+    // get/put returns "" / false — which would make the device look
+    // like it had no credentials at all even when secrets.ini was
+    // populated. Surface the failure on serial AND fall back to a
+    // RAM-only KvStore so build-time credentials still drive WiFi
+    // association this boot. Persistence is lost across reboots, but
+    // the device remains reachable for diagnosis instead of going
+    // silently offline.
+    const bool nvsOk = prefs.begin(PREFS_NAMESPACE, /*readOnly=*/false);
+    if (!nvsOk)
+    {
+        Serial.println("ERROR: NVS init failed — using build-time "
+                       "credentials without persistence. Runtime "
+                       "credential updates will be lost on reboot.");
+    }
 
-    Secrets::KvStore store{
-        [](const std::string &key) {
-            return std::string(prefs.getString(key.c_str(), "").c_str());
-        },
-        [](const std::string &key, const std::string &value) {
-            prefs.putString(key.c_str(), value.c_str());
-        },
-    };
+    Secrets::KvStore store = nvsOk
+        ? Secrets::KvStore{
+              [](const std::string &key) {
+                  return std::string(prefs.getString(key.c_str(), "").c_str());
+              },
+              [](const std::string &key, const std::string &value) {
+                  prefs.putString(key.c_str(), value.c_str());
+              },
+          }
+        : Secrets::KvStore{
+              [](const std::string &key) {
+                  auto it = ramFallbackStore.find(key);
+                  return it == ramFallbackStore.end() ? std::string() : it->second;
+              },
+              [](const std::string &key, const std::string &value) {
+                  ramFallbackStore[key] = value;
+              },
+          };
 
     Secrets::BuildTimeValues build{
         WIFI_SSID,
@@ -175,22 +208,18 @@ void loop()
 
     anlage.tick(elapsedTime);
 
-    if (wifi != nullptr)
+    if (wifi != nullptr && wifi->tick(elapsedTime))
     {
-        wifi->tick(elapsedTime);
-        if (wifi->state() != lastWifiState)
+        const auto s = wifi->state();
+        Serial.print("WiFi: ");
+        Serial.print(wifiStateName(s));
+        if (s == WifiManager::State::Connected)
         {
-            lastWifiState = wifi->state();
-            Serial.print("WiFi: ");
-            Serial.print(wifiStateName(lastWifiState));
-            if (lastWifiState == WifiManager::State::Connected)
-            {
-                Serial.print(" (");
-                Serial.print(WiFi.localIP());
-                Serial.print(")");
-            }
-            Serial.println();
+            Serial.print(" (");
+            Serial.print(WiFi.localIP());
+            Serial.print(")");
         }
+        Serial.println();
     }
 
     digitalWrite(PUMP_1_GPIO, anlage.isPumping(Channel::One) ? PUMP_ON : PUMP_OFF);
