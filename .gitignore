@@ -10,3 +10,4 @@ schematics/giessanlage/*.lck
 schematics/giessanlage/*.bak
 compile_commands.json
 CLAUDE.local.md
+secrets.ini

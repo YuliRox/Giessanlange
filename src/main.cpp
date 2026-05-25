@@ -1,6 +1,11 @@
 #include <Arduino.h>
+#include <Preferences.h>
+#include <WiFi.h>
+
 #include "Giessanlage.h"
 #include "DebouncedButton.h"
+#include "Secrets.h"
+#include "WifiManager.h"
 
 using Channel = Giessanlage::Channel;
 
@@ -22,14 +27,24 @@ constexpr int BUTTON_PUMP_2 = 22;
 constexpr int BUTTON_CANCEL = 23;
 constexpr int PUMP_1_GPIO = 18;
 constexpr int PUMP_2_GPIO = 19;
+
+// NVS namespace shared by Secrets and any future Preferences-backed config.
+constexpr const char *PREFS_NAMESPACE = "giessanlage";
 } // namespace
 
 DebouncedButton buttonPump1([] { return digitalRead(BUTTON_PUMP_1); });
 DebouncedButton buttonPump2([] { return digitalRead(BUTTON_PUMP_2); });
 DebouncedButton buttonCancel([] { return digitalRead(BUTTON_CANCEL); });
 
+Preferences prefs;
+
+// Lazily initialised after Preferences.begin() succeeds.
+Secrets *secrets = nullptr;
+WifiManager *wifi = nullptr;
+
 const unsigned long outputRemainingWaitInterval = 60UL * 1000UL;
 unsigned long outputRemainingWait = 0;
+WifiManager::State lastWifiState = WifiManager::State::Disconnected;
 
 static int channelLabel(Channel ch)
 {
@@ -52,6 +67,17 @@ void togglePump(Channel channel)
         Serial.print(channelLabel(channel));
         Serial.println(": on");
     }
+}
+
+static const char *wifiStateName(WifiManager::State s)
+{
+    switch (s)
+    {
+    case WifiManager::State::Disconnected: return "Disconnected";
+    case WifiManager::State::Connecting:   return "Connecting";
+    case WifiManager::State::Connected:    return "Connected";
+    }
+    return "?";
 }
 
 void setup()
@@ -84,6 +110,42 @@ void setup()
     Serial.print("WateringInterval: ");
     Serial.print(anlage.getWateringInterval());
     Serial.println("ms");
+
+    prefs.begin(PREFS_NAMESPACE, /*readOnly=*/false);
+
+    Secrets::KvStore store{
+        [](const std::string &key) {
+            return std::string(prefs.getString(key.c_str(), "").c_str());
+        },
+        [](const std::string &key, const std::string &value) {
+            prefs.putString(key.c_str(), value.c_str());
+        },
+    };
+
+    Secrets::BuildTimeValues build{
+        WIFI_SSID,
+        WIFI_PASS,
+        MQTT_USER,
+        MQTT_PASS,
+        MQTT_BROKER,
+    };
+
+    secrets = new Secrets(std::move(store), build);
+
+    wifi = new WifiManager(
+        [](const std::string &ssid, const std::string &pass) {
+            Serial.print("WiFi: connecting to '");
+            Serial.print(ssid.c_str());
+            Serial.println("'");
+            WiFi.mode(WIFI_STA);
+            WiFi.begin(ssid.c_str(), pass.c_str());
+        },
+        []() { return WiFi.status() == WL_CONNECTED; },
+        secrets->wifiSsid(),
+        secrets->wifiPass());
+
+    if (!secrets->hasCredentials())
+        Serial.println("WiFi: no credentials configured — staying offline");
 }
 
 void loop()
@@ -101,6 +163,24 @@ void loop()
     outputRemainingWait += elapsedTime;
 
     anlage.tick(elapsedTime);
+
+    if (wifi != nullptr)
+    {
+        wifi->tick(elapsedTime);
+        if (wifi->state() != lastWifiState)
+        {
+            lastWifiState = wifi->state();
+            Serial.print("WiFi: ");
+            Serial.print(wifiStateName(lastWifiState));
+            if (lastWifiState == WifiManager::State::Connected)
+            {
+                Serial.print(" (");
+                Serial.print(WiFi.localIP());
+                Serial.print(")");
+            }
+            Serial.println();
+        }
+    }
 
     digitalWrite(PUMP_1_GPIO, anlage.isPumping(Channel::One) ? PUMP_ON : PUMP_OFF);
     digitalWrite(PUMP_2_GPIO, anlage.isPumping(Channel::Two) ? PUMP_ON : PUMP_OFF);

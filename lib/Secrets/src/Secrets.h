@@ -1,0 +1,51 @@
+#ifndef Secrets_h
+#define Secrets_h
+
+#include <functional>
+#include <string>
+
+/// Persistent secrets (WiFi + MQTT credentials) backed by an injected
+/// key-value store. Seeds the store from build-time macro values on first
+/// boot or whenever the macros change. Platform-independent so it can be
+/// unit-tested on the host; the Arduino side wraps the ESP32 Preferences
+/// API with a KvStore.
+class Secrets
+{
+public:
+    struct KvStore
+    {
+        std::function<std::string(const std::string &)> get;
+        std::function<void(const std::string &, const std::string &)> put;
+    };
+
+    struct BuildTimeValues
+    {
+        std::string wifiSsid;
+        std::string wifiPass;
+        std::string mqttUser;
+        std::string mqttPass;
+        std::string mqttBroker;
+    };
+
+    /// Construct, seeding the store from any non-empty build-time value
+    /// that differs from what the store already holds. Empty build-time
+    /// values are ignored — the store keeps whatever it had.
+    Secrets(KvStore store, const BuildTimeValues &buildTime);
+
+    std::string wifiSsid() const;
+    std::string wifiPass() const;
+    std::string mqttUser() const;
+    std::string mqttPass() const;
+    std::string mqttBroker() const;
+
+    /// True iff `wifiSsid()` is non-empty. Use as a quick gate before
+    /// attempting WiFi association on devices with no credentials yet.
+    bool hasCredentials() const;
+
+private:
+    KvStore _store;
+
+    void seed(const std::string &key, const std::string &macroValue);
+};
+
+#endif
