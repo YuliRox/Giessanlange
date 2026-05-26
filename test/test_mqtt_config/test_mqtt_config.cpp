@@ -80,9 +80,9 @@ void test_first_boot_no_nvs_seeds_defaults()
 void test_second_boot_with_nvs_no_writes()
 {
     KvFake kv;
-    kv.data["pump_time_ch1_ms"]     = "45000";
-    kv.data["pump_time_ch2_ms"]     = "20000";
-    kv.data["watering_interval_ms"] = "43200000";
+    kv.data["pump_t_ch1_ms"]     ="45000";
+    kv.data["pump_t_ch2_ms"]     ="20000";
+    kv.data["water_int_ms"] ="43200000";
     PubFake pub;
     ApplyFake app;
     MqttConfig cfg(kv.make(), pub.fn(), app.fn(), defaultConfig());
@@ -99,9 +99,9 @@ void test_second_boot_with_nvs_no_writes()
 void test_broker_config_matching_nvs_is_noop()
 {
     KvFake kv;
-    kv.data["pump_time_ch1_ms"]     = "30000";
-    kv.data["pump_time_ch2_ms"]     = "30000";
-    kv.data["watering_interval_ms"] = "86400000";
+    kv.data["pump_t_ch1_ms"]     ="30000";
+    kv.data["pump_t_ch2_ms"]     ="30000";
+    kv.data["water_int_ms"] ="86400000";
     PubFake pub;
     ApplyFake app;
     MqttConfig cfg(kv.make(), pub.fn(), app.fn(), defaultConfig());
@@ -123,9 +123,9 @@ void test_broker_config_matching_nvs_is_noop()
 void test_broker_config_differing_overrides_nvs()
 {
     KvFake kv;
-    kv.data["pump_time_ch1_ms"]     = "30000";
-    kv.data["pump_time_ch2_ms"]     = "30000";
-    kv.data["watering_interval_ms"] = "86400000";
+    kv.data["pump_t_ch1_ms"]     ="30000";
+    kv.data["pump_t_ch2_ms"]     ="30000";
+    kv.data["water_int_ms"] ="86400000";
     PubFake pub;
     ApplyFake app;
     MqttConfig cfg(kv.make(), pub.fn(), app.fn(), defaultConfig());
@@ -148,9 +148,9 @@ void test_broker_config_differing_overrides_nvs()
 void test_broker_silent_publishes_nvs_as_retained()
 {
     KvFake kv;
-    kv.data["pump_time_ch1_ms"]     = "30000";
-    kv.data["pump_time_ch2_ms"]     = "30000";
-    kv.data["watering_interval_ms"] = "86400000";
+    kv.data["pump_t_ch1_ms"]     ="30000";
+    kv.data["pump_t_ch2_ms"]     ="30000";
+    kv.data["water_int_ms"] ="86400000";
     PubFake pub;
     ApplyFake app;
     MqttConfig cfg(kv.make(), pub.fn(), app.fn(), defaultConfig());
@@ -173,9 +173,9 @@ void test_broker_silent_publishes_nvs_as_retained()
 void test_runtime_update_invalid_payload_rejected()
 {
     KvFake kv;
-    kv.data["pump_time_ch1_ms"]     = "30000";
-    kv.data["pump_time_ch2_ms"]     = "30000";
-    kv.data["watering_interval_ms"] = "86400000";
+    kv.data["pump_t_ch1_ms"]     ="30000";
+    kv.data["pump_t_ch2_ms"]     ="30000";
+    kv.data["water_int_ms"] ="86400000";
     PubFake pub;
     ApplyFake app;
     MqttConfig cfg(kv.make(), pub.fn(), app.fn(), defaultConfig());
@@ -204,9 +204,9 @@ void test_runtime_update_invalid_payload_rejected()
 void test_reconnect_resets_broker_seen()
 {
     KvFake kv;
-    kv.data["pump_time_ch1_ms"]     = "30000";
-    kv.data["pump_time_ch2_ms"]     = "30000";
-    kv.data["watering_interval_ms"] = "86400000";
+    kv.data["pump_t_ch1_ms"]     ="30000";
+    kv.data["pump_t_ch2_ms"]     ="30000";
+    kv.data["water_int_ms"] ="86400000";
     PubFake pub;
     ApplyFake app;
     MqttConfig cfg(kv.make(), pub.fn(), app.fn(), defaultConfig());
