@@ -59,10 +59,12 @@ production.
 
 ## USB passthrough (flashing the ESP32)
 
-Serial passthrough is wired into the default container: `devcontainer.json` layers
-`docker-compose.usb.yml` on top of `docker-compose.yml`, which maps `/dev/ttyUSB0` (the
-CP210x UART bridge) into the container. If your C6 is wired through its **native USB**
-port instead, it enumerates as `/dev/ttyACM0` — update the mapping in
+Serial passthrough is **opt-in**: by default `devcontainer.json` lists only
+`docker-compose.yml`, so the container builds without a board attached. To flash/monitor,
+add `docker-compose.usb.yml` to the `dockerComposeFile` array in `devcontainer.json`
+(keep this change local — don't commit it), then rebuild/reopen. That overlay maps
+`/dev/ttyUSB0` (the CP210x UART bridge) into the container. If your C6 is wired through
+its **native USB** port instead, it enumerates as `/dev/ttyACM0` — update the mapping in
 `docker-compose.usb.yml`.
 
 A `postStartCommand` in `devcontainer.json` `chgrp dialout` + `chmod g+rw` the device on
@@ -106,14 +108,7 @@ Verify inside the container:
 ls -l /dev/ttyUSB0   # present and group-writable; vscode is in the dialout group
 ```
 
-If you don't have a board attached and just want to build/test, start without the USB
-overlay so create doesn't fail:
-
-```bash
-docker compose -f .devcontainer/docker-compose.yml up   # no device mapping
-```
-
-(or temporarily drop `docker-compose.usb.yml` from `dockerComposeFile`).
+Building/testing without a board needs no action — the USB overlay is off by default.
 
 ### Linux host
 
