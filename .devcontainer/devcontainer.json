@@ -1,0 +1,45 @@
+{
+  "name": "Giessanlange (PlatformIO / ESP32-C6)",
+  "dockerComposeFile": [
+    "docker-compose.yml",
+    "docker-compose.usb.yml"
+  ],
+  "service": "dev",
+  "workspaceFolder": "/workspaces/Giessanlange",
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "mounts": [
+    // Claude Code config/state — including credentials — lives in a gitignored,
+    // repo-scoped folder so it persists across rebuilds without leaking into other
+    // repositories. Authenticate once inside the container with `claude` and the
+    // token is stored here (writable, so OAuth refresh works).
+    "source=${localWorkspaceFolder}/.devcontainer/.claude-home,target=/home/vscode/.claude,type=bind"
+  ],
+  "containerEnv": {
+    // Opt out of Claude Code telemetry, error reporting, and other
+    // non-essential network traffic for every session in the container.
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "platformio.platformio-ide",
+        "ms-vscode.cpptools",
+        "ms-python.python"
+      ],
+      "settings": {
+        "platformio-ide.useBuiltinPIOCore": false
+      }
+    }
+  },
+  "postCreateCommand": "pio --version",
+  // docker-desktop has no udev, so the passed-through serial device is root-owned
+  // (0600). Make it group-accessible so the non-root vscode user can flash/monitor.
+  // Tolerant of the device being absent (no board attached this session).
+  "postStartCommand": "sudo sh -c 'test -e /dev/ttyUSB0 && chgrp dialout /dev/ttyUSB0 && chmod g+rw /dev/ttyUSB0' || true",
+  "shutdownAction": "stopCompose"
+}

@@ -107,6 +107,12 @@ Pump power path
 - `src/main.cpp`
 - `lib/Oled/src/Oled.h`
 
+## Development Container
+
+A dev container (PlatformIO, Node, GitHub CLI, Claude Code, and a Mosquitto MQTT broker)
+is provided for building, testing, and flashing. See `.devcontainer/README.md` for setup,
+USB passthrough for the ESP32, and MQTT details.
+
 ## Related Notes
 
 - `ESP32_MOSFET_NEXT_STEPS.md`: migration and assembly notes for an `ESP32-C6-DevKitC-1` with two MOSFET-switched pumps
