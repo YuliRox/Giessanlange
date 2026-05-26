@@ -4,9 +4,16 @@
 
 namespace
 {
+// JSON field names on the giessanlage/config topic (broker-facing schema).
 constexpr const char *KEY_CH1 = "pump_time_ch1_ms";
 constexpr const char *KEY_CH2 = "pump_time_ch2_ms";
 constexpr const char *KEY_INT = "watering_interval_ms";
+
+// NVS keys. ESP32 NVS keys are capped at 15 chars, so these are short
+// aliases of the JSON names above (which exceed the limit). Do not lengthen.
+constexpr const char *NVS_CH1 = "pump_t_ch1_ms";
+constexpr const char *NVS_CH2 = "pump_t_ch2_ms";
+constexpr const char *NVS_INT = "water_int_ms";
 
 bool parseUlongField(const std::string &json, const std::string &key,
                      unsigned long &out)
@@ -91,17 +98,20 @@ bool MqttConfig::isValid(const Values &v) const
 
 MqttConfig::Values MqttConfig::initFromNvs()
 {
-    const bool nvsHasAnyKey = !_store.get(KEY_CH1).empty() ||
-                              !_store.get(KEY_CH2).empty() ||
-                              !_store.get(KEY_INT).empty();
+    // Require all three keys: if only some survived NVS corruption, treat
+    // it as unseeded and re-persist the full set below, rather than booting
+    // with a hybrid (some-stored / some-default) config that never repairs.
+    const bool nvsHasAllKeys = !_store.get(NVS_CH1).empty() &&
+                               !_store.get(NVS_CH2).empty() &&
+                               !_store.get(NVS_INT).empty();
 
-    _current.pumpTimeCh1Ms     = readUlongOrDefault(_store, KEY_CH1, _config.defaults.pumpTimeCh1Ms);
-    _current.pumpTimeCh2Ms     = readUlongOrDefault(_store, KEY_CH2, _config.defaults.pumpTimeCh2Ms);
-    _current.wateringIntervalMs = readUlongOrDefault(_store, KEY_INT, _config.defaults.wateringIntervalMs);
+    _current.pumpTimeCh1Ms     = readUlongOrDefault(_store, NVS_CH1, _config.defaults.pumpTimeCh1Ms);
+    _current.pumpTimeCh2Ms     = readUlongOrDefault(_store, NVS_CH2, _config.defaults.pumpTimeCh2Ms);
+    _current.wateringIntervalMs = readUlongOrDefault(_store, NVS_INT, _config.defaults.wateringIntervalMs);
 
-    // Seed NVS on first boot so subsequent boots are no-ops if defaults
-    // haven't changed.
-    if (!nvsHasAnyKey)
+    // Seed NVS on first boot (or repair partial corruption) so subsequent
+    // boots are no-ops if defaults haven't changed.
+    if (!nvsHasAllKeys)
         persist(_current);
 
     _apply(_current);
@@ -154,7 +164,7 @@ MqttConfig::Values MqttConfig::currentValues() const
 
 void MqttConfig::persist(const Values &v)
 {
-    _store.put(KEY_CH1, toString(v.pumpTimeCh1Ms));
-    _store.put(KEY_CH2, toString(v.pumpTimeCh2Ms));
-    _store.put(KEY_INT, toString(v.wateringIntervalMs));
+    _store.put(NVS_CH1, toString(v.pumpTimeCh1Ms));
+    _store.put(NVS_CH2, toString(v.pumpTimeCh2Ms));
+    _store.put(NVS_INT, toString(v.wateringIntervalMs));
 }
