@@ -38,15 +38,21 @@ public:
     struct Config
     {
         std::string topic = "giessanlage/status";
+        // Min gap between publishes triggered by a meaningful state change
+        // (coalesces bursts of transitions).
         unsigned long minIntervalMs = 1000;
+        // Republish cadence when nothing meaningful changed (heartbeat), so
+        // the retained snapshot stays fresh without publishing every tick.
+        unsigned long heartbeatIntervalMs = 30000;
     };
 
     MqttStatus(PublishFn publish, Config config);
 
-    /// Drive from the main loop. Publishes when the snapshot differs
-    /// from the last successfully published one AND at least
-    /// `minIntervalMs` has elapsed since that publish. Returns true iff
-    /// a publish was issued this call.
+    /// Drive from the main loop. Publishes when a meaningful field changed
+    /// (subject to `minIntervalMs` throttling) or, if nothing changed, once
+    /// `heartbeatIntervalMs` has elapsed since the last publish. `uptimeMs`
+    /// is not a meaningful field — it only rides along on heartbeats. Returns
+    /// true iff a publish was issued this call.
     bool update(const Snapshot &snapshot, unsigned long nowMs);
 
     /// Force a republish on the next `update()` call. Use after MQTT

@@ -32,10 +32,14 @@ std::string MqttEvents::buildPumpPayload(int channel, int fromState, int toState
 
 std::string MqttEvents::buildButtonPayload(const std::string &button, unsigned long tsMs)
 {
+    // Sanitise: reject any string that could break the JSON structure.
+    const bool safe = button.find('"') == std::string::npos &&
+                      button.find('\\') == std::string::npos;
+    const char *label = safe ? button.c_str() : "unknown";
     char buf[96];
     std::snprintf(buf, sizeof(buf),
         "{\"button\":\"%s\",\"ts_ms\":%lu}",
-        button.c_str(), tsMs);
+        label, tsMs);
     return std::string(buf);
 }
 

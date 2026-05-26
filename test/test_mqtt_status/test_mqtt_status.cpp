@@ -77,8 +77,32 @@ void test_unchanged_snapshot_no_publish()
     auto s = defaultSnapshot();
 
     status.update(s, 0);
-    TEST_ASSERT_FALSE(status.update(s, 2000)); // same snapshot, well past throttle
+    // Same snapshot, past the change-throttle but before the heartbeat: no publish.
+    TEST_ASSERT_FALSE(status.update(s, 2000));
     TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+}
+
+void test_heartbeat_republishes_unchanged_snapshot()
+{
+    PublishFake pub;
+    MqttStatus::Config cfg;
+    cfg.heartbeatIntervalMs = 30000;
+    MqttStatus status(pub.fn(), cfg);
+    auto s = defaultSnapshot();
+
+    status.update(s, 0);
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    // Only uptime advances (not a meaningful field). Before the heartbeat
+    // interval: still no republish.
+    s.uptimeMs = 20000;
+    TEST_ASSERT_FALSE(status.update(s, 20000));
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    // Once the heartbeat interval elapses, republish even though only uptime changed.
+    s.uptimeMs = 30000;
+    TEST_ASSERT_TRUE(status.update(s, 30000));
+    TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
 }
 
 void test_throttle_holds_back_rapid_changes()
@@ -92,17 +116,18 @@ void test_throttle_holds_back_rapid_changes()
     status.update(s, 0);
     TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
 
-    // Change a field rapidly — three updates within the throttle window.
-    s.uptimeMs = 100;
+    // Change a meaningful field rapidly — three updates within the throttle
+    // window. (uptimeMs is not meaningful, so use a real state field.)
+    s.remainingWateringMs = 100;
     status.update(s, 100);
-    s.uptimeMs = 500;
+    s.remainingWateringMs = 500;
     status.update(s, 500);
-    s.uptimeMs = 900;
+    s.remainingWateringMs = 900;
     status.update(s, 900);
     TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
 
     // After the window elapses the next change publishes.
-    s.uptimeMs = 1100;
+    s.remainingWateringMs = 1100;
     status.update(s, 1100);
     TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
 }
@@ -164,6 +189,7 @@ int main(int, char **)
     RUN_TEST(test_payload_schema);
     RUN_TEST(test_first_call_publishes);
     RUN_TEST(test_unchanged_snapshot_no_publish);
+    RUN_TEST(test_heartbeat_republishes_unchanged_snapshot);
     RUN_TEST(test_throttle_holds_back_rapid_changes);
     RUN_TEST(test_publish_failure_does_not_record_as_published);
     RUN_TEST(test_invalidate_forces_republish_even_if_snapshot_unchanged);
