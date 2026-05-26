@@ -68,6 +68,10 @@ static std::map<std::string, std::string> configFallbackStore;
 
 // Lazily initialised after Preferences.begin() succeeds (or its fallback
 // kicks in).
+// PubSubClient::setServer stores the char* we hand it, not a copy. Keep the
+// broker host string alive for the program's lifetime so that pointer stays valid.
+static std::string mqttBrokerHost;
+
 Secrets     *secrets    = nullptr;
 WifiManager *wifi       = nullptr;
 MqttStatus  *mqttStatus = nullptr;
@@ -357,8 +361,9 @@ void setup()
     mqttStatus = new MqttStatus(mqttPublishLambda, {});
     mqttEvents = new MqttEvents(mqttPublishLambda, {});
 
-    if (!secrets->mqttBroker().empty())
-        mqttClient.setServer(secrets->mqttBroker().c_str(), MQTT_PORT);
+    mqttBrokerHost = secrets->mqttBroker();
+    if (!mqttBrokerHost.empty())
+        mqttClient.setServer(mqttBrokerHost.c_str(), MQTT_PORT);
     mqttClient.setCallback(onMqttMessage);
 
     Serial.print("PumpTime Ch1: ");
