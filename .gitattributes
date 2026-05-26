@@ -1,0 +1,4 @@
+# Normalize line endings. Shell scripts must stay LF or they break when the
+# repo is checked out on Windows (a CRLF hook script fails with $'\r').
+* text=auto
+*.sh text eol=lf
