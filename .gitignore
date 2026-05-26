@@ -11,3 +11,10 @@ schematics/giessanlage/*.bak
 compile_commands.json
 CLAUDE.local.md
 secrets.ini
+
+# Devcontainer Claude Code state (repo-scoped, not shared)
+.devcontainer/.claude-home/*
+!.devcontainer/.claude-home/.gitkeep
+
+# Devcontainer local env (credentials) — keep the .example template tracked
+.devcontainer/.env
