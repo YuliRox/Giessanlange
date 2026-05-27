@@ -97,6 +97,13 @@ Pump outputs are **active-high** N-MOSFET gate drive (`HIGH` = pump on). Buttons
 
 ## Status
 
+## Development Container
+
+A dev container (PlatformIO, Node, GitHub CLI, Claude Code, and a Mosquitto MQTT broker)
+is provided for building, testing, and flashing. See `.devcontainer/README.md` for setup,
+USB passthrough for the ESP32, and MQTT details.
+
+## Related Notes
 Working today: pump state machine, debounced buttons, MOSFET pump driver stage (schematic; firmware drives the gates correctly). All `native` test suites green.
 
 In progress / planned: see the GitHub issue tracker. MVP milestone covers the baseplate assembly, WiFi + MQTT integration, on-device e-paper UI, and a few safety/diagnostics items.

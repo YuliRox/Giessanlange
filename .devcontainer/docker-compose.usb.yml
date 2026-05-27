@@ -1,0 +1,18 @@
+# Opt-in USB passthrough overlay for flashing/monitoring the ESP32.
+# Apply on top of docker-compose.yml ONLY when the board is attached into the
+# Docker backend, otherwise container create fails ("no such file or directory").
+#
+# Windows (Docker Desktop): install usbipd-win and attach the board into WSL2 first
+# so /dev/ttyUSB0 exists in the docker-desktop distro — see .devcontainer/README.md.
+# Linux host: the device is present directly once the board is plugged in.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.usb.yml up
+# or list both files in dockerComposeFile in devcontainer.json.
+#
+# The CP210x UART bridge enumerates as /dev/ttyUSB0; the C6's native USB-CDC would
+# be /dev/ttyACM0 — change both sides of the mapping if your board uses that port.
+services:
+  dev:
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
