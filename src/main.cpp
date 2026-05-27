@@ -24,14 +24,13 @@ constexpr int BUTTON_OPEN = HIGH;
 constexpr int PUMP_ON = HIGH;
 constexpr int PUMP_OFF = LOW;
 
-constexpr int BUTTON_PUMP_1 = 21;
-constexpr int BUTTON_PUMP_2 = 22;
-constexpr int BUTTON_CANCEL = 23;
-constexpr int PUMP_1_GPIO = 18;
-constexpr int PUMP_2_GPIO = 19;
-
 // NVS namespace shared by Secrets and any future Preferences-backed config.
 constexpr const char *PREFS_NAMESPACE = "giessanlage";
+constexpr int BUTTON_PUMP_1 = 11;
+constexpr int BUTTON_PUMP_2 = 10;
+constexpr int BUTTON_CANCEL = 1;
+constexpr int PUMP_1_GPIO = 23;
+constexpr int PUMP_2_GPIO = 22;
 } // namespace
 
 DebouncedButton buttonPump1([] { return digitalRead(BUTTON_PUMP_1); });

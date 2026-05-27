@@ -47,6 +47,16 @@ KiCad references:
 - `1x` `TOF200C-VL53L0X`
 - `1x` `Chirp` soil moisture sensor, version `2.7.5` (https://wemakethings.net/chirp/)
 
+## Display
+
+- `1x` `2.9"` e-paper display, black/white/red, Reichelt #253924 (https://www.reichelt.de/de/de/shop/produkt/entwicklerboards_-_display_epaper_2_9_schwarz_weiss_rot-253924)
+
+Notes:
+
+- e-paper, not OLED — pick because it is sunlight-readable and draws ~zero current between refreshes, both critical for a solar-powered outdoor device
+- interface is `SPI`, not I2C — pin assignments TBD; will need SPI pins (`SCK`, `MOSI`) plus `CS`, `DC`, `RST`, and `BUSY` allocated on the ESP32-C6
+- refresh is slow (seconds for a full update); the firmware status screen should redraw infrequently, not every loop tick
+
 ## I2C Support Parts
 
 - `2x` `4.7k ohm` resistor for `SDA` and `SCL` pull-ups to `3V3`
@@ -88,14 +98,25 @@ These are part of the system but not newly introduced by the rework:
 
 ## Current Pin Plan
 
-- `GPIO6` -> shared `I2C SDA`
-- `GPIO7` -> shared `I2C SCL`
-- `GPIO16` -> ultrasonic sensor power enable, active-low
+See `docs/GPIO_MAPPING.md` for the authoritative GPIO map. Summary:
+
+- `GPIO0`  -> `TOF XSHUT`
+- `GPIO1`  -> cancel button, `INPUT_PULLUP`
+- `GPIO2`  -> e-paper `BUSY`
+- `GPIO3`  -> e-paper `DC`
+- `GPIO4`  -> reserved for battery voltage divider, `ADC1_CH4` (future)
+- `GPIO6`  -> shared `I2C SDA`
+- `GPIO7`  -> shared `I2C SCL`
+- `GPIO10` -> pump 2 button, `INPUT_PULLUP`
+- `GPIO11` -> pump 1 button, `INPUT_PULLUP`
+- `GPIO16` -> ultrasonic sensor power enable, active-low PMOS gate
 - `GPIO17` -> ultrasonic sensor UART receive
-- `GPIO18` -> Pump 1 MOSFET gate
-- `GPIO19` -> Pump 2 MOSFET gate
-- `GPIO20` -> `TOF_XSHUT`
-- `GPIO2` -> potentiometer ADC input, if retained
+- `GPIO18` -> e-paper `DIN` (`SPI MOSI`)
+- `GPIO19` -> e-paper `CLK` (`SPI SCK`)
+- `GPIO20` -> e-paper `CS`
+- `GPIO21` -> e-paper `RST`
+- `GPIO22` -> pump 2 MOSFET gate (`Q2`)
+- `GPIO23` -> pump 1 MOSFET gate (`Q1`)
 
 ## Notes
 
