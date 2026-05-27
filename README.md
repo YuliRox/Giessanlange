@@ -1,111 +1,101 @@
-Gießanlage mit Solarpanel und Laderegler
+# Gießanlage
 
-## Electronics and Wiring Notes
+Solar-powered ESP32-C6 plant watering controller. Two channels, MOSFET pump driver, three buttons. Talks to a local MQTT broker for status / config (in progress).
 
-This repository does not currently contain a schematic, PCB design, or photo-based wiring documentation.
-The notes below are reconstructed from the firmware and should be treated as the current best-known wiring map.
+## Hardware
 
-## Controller
+- **Controller**: `ESP32-C6-DevKitC-1`
+- **Pumps**: 2× DC pump, ~14 V / 24 W, switched low-side via `IRLZ34N` N-MOSFETs
+- **Sensors**: Chirp soil moisture (I2C), VL53L0X TOF (I2C), A02YYUW ultrasonic (UART)
+- **Display**: 2.9" tri-colour e-paper, SPI (Reichelt #253924)
 
-- Target board: ESP32-C6-DevKitC-1
-- Source: `platformio.ini`
+For details:
 
-## Pin Mapping
+- **Authoritative wiring** — `schematics/giessanlage/giessanlage.kicad_sch`
+- **GPIO map** — `docs/GPIO_MAPPING.md`
+- **Bill of materials** — `docs/HARDWARE_BOM.md`
+- **Sensor wiring notes** — `docs/SENSOR_WIRING_NOTES.md`
+- **MOSFET stage details** — `docs/ESP32_MOSFET_NEXT_STEPS.md`
 
-- `GPIO2` (ADC): potentiometer for pump runtime per watering cycle
-- `GPIO21`: manual start button
-- `GPIO22`: cancel/stop button
-- `GPIO23`: 12h/24h interval switch
-- `GPIO18`: pump 1 MOSFET gate control
-- `GPIO19`: pump 2 MOSFET gate control
+The schematic is the source of truth. Docs follow it; firmware constants in `src/main.cpp` follow the docs.
 
-## About Old Arduino Labels (e.g. `D1`)
+## Project layout
 
-Old labels like `D1`, `D2`, `A2` refer to Arduino Nano pin naming and are no longer the source of truth.
-For the ESP32-C6 firmware in this repo, use only the explicit `GPIO` numbers listed above.
-`D1` is currently not referenced by the firmware.
+```
+src/main.cpp                 Arduino glue. The only file allowed to touch
+                             Arduino headers, GPIO pin numbers, and millis().
 
-## Expected Wiring Behavior
+lib/Giessanlage/             Pure state machine. Platform-independent.
+                             Multi-channel, per-channel pumpTime, per-channel
+                             API (Channel::One / Channel::Two).
+lib/DebouncedButton/         Reusable button debouncer with std::function
+                             PinReader injection. Native-testable.
+lib/ChirpSensor/             I2C soil moisture wrapper.
+lib/ToFSensor/               VL53L0X water-level wrapper.
+lib/UltraschallSensor/       A02YYUW frame parser + UART glue.
 
-- `GPIO21`, `GPIO22`, and `GPIO23` are configured as `INPUT_PULLUP`
-- That means each button or switch input is expected to connect the pin to `GND` when closed
-- Pump outputs are active-high for MOSFET gate drive
-- That means `GPIO18/19 = HIGH` turns the respective pump on, `LOW` turns it off
+test/test_logic/             Giessanlage state-machine tests (Unity).
+test/test_button/            DebouncedButton tests.
+test/test_chirp/             ChirpSensor tests.
+test/test_ultraschall/       Ultrasonic frame parser tests.
 
-## Functional Behavior
+docs/                        Hardware references (see list above) +
+                             HAL_TESTABILITY.md (the pattern every lib/
+                             component follows).
 
-- The potentiometer on `GPIO2` sets how long the pump runs each time it is activated
-- The runtime is mapped from about `5s` to `60s`
-- It does not change the 12h/24h watering interval
-- The button on `GPIO21` starts a manual pump cycle
-- The button on `GPIO22` stops the current pump cycle
-- The switch on `GPIO23` selects the watering interval
-- `GPIO23 = HIGH` selects `12h`
-- `GPIO23 = LOW` selects `24h`
-
-## Likely External Connections
-
-- Potentiometer: one outer pin to `3V3`, the other outer pin to `GND`, and the wiper to `GPIO2`
-- Manual button: one side to `GPIO21`, the other side to `GND`
-- Cancel button: one side to `GPIO22`, the other side to `GND`
-- 12h/24h switch: one side to `GPIO23`, the other side to `GND`
-- Pump channel 1: `GPIO18` to MOSFET gate driver path
-- Pump channel 2: `GPIO19` to MOSFET gate driver path
-- Common ground between ESP32-C6 and pump power stage is required
-
-## ASCII Wiring Sketch
-
-```text
-                           +---------------------------+
-                           |     ESP32-C6-DevKitC-1    |
-                           |                           |
-             Pot wiper ----| GPIO2 (ADC)              |
-      Manual button   -----| GPIO21                   |
-      Cancel button   -----| GPIO22                   |
-     Interval switch  -----| GPIO23                   |
-       Pump 1 control -----| GPIO18                   |
-       Pump 2 control -----| GPIO19                   |
-                           |                           |
-                 3V3  -----| 3V3                      |
-                 GND  -----| GND                      |
-                           +---------------------------+
-
-Potentiometer
-  outer pin 1 -> 3V3
-  outer pin 2 -> GND
-  wiper       -> GPIO2
-
-Manual button
-  GPIO21 ---[ button ]--- GND
-
-Cancel button
-  GPIO22 ---[ button ]--- GND
-
-12h/24h switch
-  GPIO23 ---[ switch ]--- GND
-
-Pump stage
-  GPIO18 -> Pump 1 gate drive path
-  GPIO19 -> Pump 2 gate drive path
-  ESP GND -> pump power GND (common reference)
-
-Pump power path
-  Switched externally via MOSFET power stage.
+schematics/giessanlage/      KiCad project + schematic (authoritative).
 ```
 
-## What Is Still Missing
+The HAL pattern in `docs/HAL_TESTABILITY.md` is the project convention: classes that ultimately touch hardware take a `std::function` reader/writer at construction. `main.cpp` provides the real one (`digitalRead`/`digitalWrite` lambdas); tests provide a stub. This keeps every `lib/` component compilable and unit-testable in the `native` env.
 
-- Exact pump voltage
-- Exact MOSFET part numbers and resistor values as physically assembled
-- Power path between solar panel, charge controller, battery, ESP32-C6, and pump
-- Final power path between solar charge controller USB output and ESP32-C6 input
-- Whether the OLED helper library is planned hardware or leftover code
+## Build, flash, test
 
-## Code References
+PlatformIO. Two environments in `platformio.ini`:
 
-- `platformio.ini`
-- `src/main.cpp`
-- `lib/Oled/src/Oled.h`
+- `esp32-c6-devkitc-1` — real hardware target.
+- `native` — host build for unit tests.
+
+```bash
+pio run                    # build for ESP32-C6 (default env)
+pio run -t upload          # flash the device
+pio device monitor         # serial monitor @ 115200 baud
+
+pio test -e native                  # run all host unit tests
+pio test -e native -f test_logic    # filter by suite directory name
+```
+
+WSL note: the `native` env needs `gcc`/`g++` on PATH. On Windows hosts, run the test commands from WSL Ubuntu (see `CLAUDE.local.md` if it exists locally for the exact venv invocation).
+
+## Firmware API at a glance
+
+`Giessanlage` is the state machine. Two channels, named `Channel::One` and `Channel::Two`. Per-channel `pumpTime`, shared `wateringInterval`. All time is injected via `tick(delta_ms)` — the class never calls `millis()`.
+
+```cpp
+using Channel = Giessanlage::Channel;
+
+Giessanlage anlage(
+    /*wateringTime=*/ Giessanlage::INTERVAL_24H,
+    /*pumpTimeCh1=*/  Giessanlage::INTERVAL_30S,
+    /*pumpTimeCh2=*/  Giessanlage::INTERVAL_30S);
+
+// each tick of the main loop:
+anlage.tick(elapsedMs);
+digitalWrite(PUMP_1_GPIO, anlage.isPumping(Channel::One) ? HIGH : LOW);
+digitalWrite(PUMP_2_GPIO, anlage.isPumping(Channel::Two) ? HIGH : LOW);
+
+// user actions:
+anlage.triggerPump(Channel::One);   // manual start
+anlage.stopPump(Channel::One);      // manual stop
+anlage.stopAllPumps();              // cancel button
+
+// multi-channel aggregates:
+anlage.isAnyPumping();              // any channel running?
+anlage.triggerAllPumps();           // start every idle channel
+```
+
+Pump outputs are **active-high** N-MOSFET gate drive (`HIGH` = pump on). Buttons are `INPUT_PULLUP`, so closed = `LOW`.
+
+## Status
 
 ## Development Container
 
@@ -114,5 +104,6 @@ is provided for building, testing, and flashing. See `.devcontainer/README.md` f
 USB passthrough for the ESP32, and MQTT details.
 
 ## Related Notes
+Working today: pump state machine, debounced buttons, MOSFET pump driver stage (schematic; firmware drives the gates correctly). All `native` test suites green.
 
-- `ESP32_MOSFET_NEXT_STEPS.md`: migration and assembly notes for an `ESP32-C6-DevKitC-1` with two MOSFET-switched pumps
+In progress / planned: see the GitHub issue tracker. MVP milestone covers the baseplate assembly, WiFi + MQTT integration, on-device e-paper UI, and a few safety/diagnostics items.
