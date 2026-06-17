@@ -25,8 +25,8 @@ plate_t         = 3;
 plate_corner_r  = 4;
 
 // ── Mid-edge notches (top and bottom centre, lid-screw bumps) ─────────────────
-mid_notch_depth = (box_inner_d - 136) / 2 + 0.5;   // = 16.5 mm + 0.5 clearance
-mid_notch_width = 12;             // estimated — tune to match actual bump width
+mid_notch_depth = (box_inner_d - 136) / 2 + 1.5;   // = 16.5 mm + 1.5 clearance
+mid_notch_width = 16;             // estimated — tune to match actual bump width
 mid_notch_r     = 4;              // fillet radius on the notch corners
 
 // ── Large bosses — all ø8.5 OD, ø4 inner, M4 clearance ──────────────────────
