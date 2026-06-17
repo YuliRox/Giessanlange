@@ -16,6 +16,7 @@ corner_cut_x    = (box_inner_w - protrusion_span_h) / 2;   // = 8.5 mm
 corner_cut_y    = (box_inner_d - protrusion_span_v) / 2;   // = 18.15 mm
 corner_margin   = 0.5;   // extra clearance added to each cutout side
 corner_cut_r    = 6;     // inner fillet radius matching box R6
+corner_chamfer  = 2.5;   // leg of the 45° chamfer at the outer step corners
 
 // ── Plate geometry ────────────────────────────────────────────────────────────
 plate_fit_margin = 1;    // total clearance so plate slides into box (split across both sides)
@@ -137,4 +138,22 @@ difference() {
             rounded_cutout(2 * (corner_cut_x + corner_margin),
                            2 * (corner_cut_y + corner_margin),
                            corner_cut_r);
+
+    // 45° chamfers at the 8 outer step corners: subtract a cube rotated 45° centred at each
+    // junction. The parts of the cube outside the plate cut nothing; the overlapping quarter
+    // removes the sharp corner. No winding issues.
+    for (sx = [-1, 1]) for (sy = [-1, 1]) {
+        // Junction: top/bottom plate edge meets cutout vertical wall
+        translate([sx * (plate_w/2 - (corner_cut_x + corner_margin)),
+                   sy * plate_d/2, plate_t/2])
+            rotate([0, 0, 45])
+            cube([corner_chamfer * sqrt(2), corner_chamfer * sqrt(2), plate_t + 2*eps],
+                 center = true);
+        // Junction: left/right plate edge meets cutout horizontal wall
+        translate([sx * plate_w/2,
+                   sy * (plate_d/2 - (corner_cut_y + corner_margin)), plate_t/2])
+            rotate([0, 0, 45])
+            cube([corner_chamfer * sqrt(2), corner_chamfer * sqrt(2), plate_t + 2*eps],
+                 center = true);
+    }
 }
