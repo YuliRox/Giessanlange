@@ -16,6 +16,7 @@ corner_cut_x    = (box_inner_w - protrusion_span_h) / 2;   // = 8.5 mm
 corner_cut_y    = (box_inner_d - protrusion_span_v) / 2;   // = 18.15 mm
 corner_margin   = 0.5;   // extra clearance added to each cutout side
 corner_cut_r    = 6;     // inner fillet radius matching box R6
+corner_notch_r  = 4;     // fillet radius at the two outer step corners of each protrusion cutout
 
 // ── Plate geometry ────────────────────────────────────────────────────────────
 plate_fit_margin = 1;    // total clearance so plate slides into box (split across both sides)
@@ -137,4 +138,17 @@ difference() {
             rounded_cutout(2 * (corner_cut_x + corner_margin),
                            2 * (corner_cut_y + corner_margin),
                            corner_cut_r);
+
+    // Step corner fillets — remove the two convex outer corners of each protrusion step
+    // where the straight plate edge meets the cutout wall (box inner walls are rounded).
+    for (sx = [-1, 1]) for (sy = [-1, 1]) {
+        // Junction: top/bottom plate edge meets the cutout vertical wall
+        translate([sx * (plate_w/2 - (corner_cut_x + corner_margin) - corner_notch_r),
+                   sy * (plate_d/2 - corner_notch_r), -eps])
+            cylinder(r = corner_notch_r, h = plate_t + 2*eps);
+        // Junction: left/right plate edge meets the cutout horizontal wall
+        translate([sx * (plate_w/2 - corner_notch_r),
+                   sy * (plate_d/2 - (corner_cut_y + corner_margin) - corner_notch_r), -eps])
+            cylinder(r = corner_notch_r, h = plate_t + 2*eps);
+    }
 }
