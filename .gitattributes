@@ -1,4 +1,4 @@
-# Normalize line endings. Shell scripts must stay LF or they break when the
-# repo is checked out on Windows (a CRLF hook script fails with $'\r').
-* text=auto
+# Normalise all text files to LF in the repo and on checkout.
+# This keeps Windows git and WSL git in agreement.
+* text=auto eol=lf
 *.sh text eol=lf

@@ -29,14 +29,15 @@ constexpr int BUTTON_OPEN = HIGH;
 constexpr int PUMP_ON = HIGH;
 constexpr int PUMP_OFF = LOW;
 
-constexpr int BUTTON_PUMP_1 = 21;
-constexpr int BUTTON_PUMP_2 = 22;
-constexpr int BUTTON_CANCEL = 23;
-constexpr int PUMP_1_GPIO = 18;
-constexpr int PUMP_2_GPIO = 19;
+// Pin map per docs/GPIO_MAPPING.md + the schematic (ESP32-C6 rework).
+constexpr int BUTTON_PUMP_1 = 11;
+constexpr int BUTTON_PUMP_2 = 10;
+constexpr int BUTTON_CANCEL = 1;
+constexpr int PUMP_1_GPIO = 23;
+constexpr int PUMP_2_GPIO = 22;
 
 // NVS namespaces. Secrets and per-feature config live in separate
-// namespaces so a Secrets reseed cannot clobber config keys.
+// namespaces so a Secrets sync cannot clobber config keys.
 constexpr const char *PREFS_SECRETS = "giessanlage";
 constexpr const char *PREFS_CONFIG  = "giessanlage_cfg";
 

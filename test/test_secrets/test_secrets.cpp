@@ -39,7 +39,7 @@ Secrets::BuildTimeValues makeBuildTime(
 }
 } // namespace
 
-void test_first_boot_seeds_from_macros()
+void test_first_boot_syncs_from_macros()
 {
     FakeKv kv;
     Secrets secrets(kv.make(),
@@ -57,7 +57,7 @@ void test_first_boot_seeds_from_macros()
 void test_second_boot_is_idempotent_when_macros_unchanged()
 {
     FakeKv kv;
-    // First boot seeds.
+    // First boot syncs.
     Secrets first(kv.make(), makeBuildTime("Net", "Pw", "u", "p", "broker"));
     const int afterFirst = kv.putCount;
 
@@ -70,7 +70,7 @@ void test_second_boot_is_idempotent_when_macros_unchanged()
     (void)afterFirst;
 }
 
-void test_changed_macros_reseed_nvs()
+void test_changed_macros_overwrite_nvs()
 {
     FakeKv kv;
     Secrets first(kv.make(), makeBuildTime("OldNet", "OldPw", "", "", ""));
@@ -87,7 +87,7 @@ void test_changed_macros_reseed_nvs()
 void test_empty_macros_leave_nvs_intact()
 {
     FakeKv kv;
-    // Pre-populate the store as if a previous run had seeded it.
+    // Pre-populate the store as if a previous run had synced it.
     kv.data["wifi_ssid"] = "Stored";
     kv.data["wifi_pass"] = "StoredPw";
 
@@ -110,7 +110,7 @@ void test_empty_macros_and_empty_store_means_no_credentials()
     TEST_ASSERT_FALSE(secrets.hasCredentials());
 }
 
-void test_partial_macros_seed_only_the_provided_keys()
+void test_partial_macros_sync_only_the_provided_keys()
 {
     FakeKv kv;
     kv.data["wifi_ssid"] = "AlreadyHere";
@@ -119,9 +119,9 @@ void test_partial_macros_seed_only_the_provided_keys()
     // Only mqtt_broker is provided as a build-time value.
     Secrets secrets(kv.make(), makeBuildTime("", "", "", "", "mqtt.local"));
 
-    // wifi_ssid stays as the pre-existing store value (no macro to reseed from).
+    // wifi_ssid stays as the pre-existing store value (no macro to sync from).
     TEST_ASSERT_EQUAL_STRING("AlreadyHere", secrets.wifiSsid().c_str());
-    // mqtt_broker was seeded from the macro.
+    // mqtt_broker was synced from the macro.
     TEST_ASSERT_EQUAL_STRING("mqtt.local", secrets.mqttBroker().c_str());
     TEST_ASSERT_EQUAL_INT(1, kv.putCount);
 }
@@ -129,11 +129,11 @@ void test_partial_macros_seed_only_the_provided_keys()
 int main(int, char **)
 {
     UNITY_BEGIN();
-    RUN_TEST(test_first_boot_seeds_from_macros);
+    RUN_TEST(test_first_boot_syncs_from_macros);
     RUN_TEST(test_second_boot_is_idempotent_when_macros_unchanged);
-    RUN_TEST(test_changed_macros_reseed_nvs);
+    RUN_TEST(test_changed_macros_overwrite_nvs);
     RUN_TEST(test_empty_macros_leave_nvs_intact);
     RUN_TEST(test_empty_macros_and_empty_store_means_no_credentials);
-    RUN_TEST(test_partial_macros_seed_only_the_provided_keys);
+    RUN_TEST(test_partial_macros_sync_only_the_provided_keys);
     return UNITY_END();
 }
