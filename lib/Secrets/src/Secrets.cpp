@@ -12,14 +12,14 @@ constexpr const char *KEY_MQTT_BROKER = "mqtt_broker";
 Secrets::Secrets(KvStore store, const BuildTimeValues &buildTime)
     : _store(std::move(store))
 {
-    seed(KEY_WIFI_SSID, buildTime.wifiSsid);
-    seed(KEY_WIFI_PASS, buildTime.wifiPass);
-    seed(KEY_MQTT_USER, buildTime.mqttUser);
-    seed(KEY_MQTT_PASS, buildTime.mqttPass);
-    seed(KEY_MQTT_BROKER, buildTime.mqttBroker);
+    syncFromBuildTime(KEY_WIFI_SSID, buildTime.wifiSsid);
+    syncFromBuildTime(KEY_WIFI_PASS, buildTime.wifiPass);
+    syncFromBuildTime(KEY_MQTT_USER, buildTime.mqttUser);
+    syncFromBuildTime(KEY_MQTT_PASS, buildTime.mqttPass);
+    syncFromBuildTime(KEY_MQTT_BROKER, buildTime.mqttBroker);
 }
 
-void Secrets::seed(const std::string &key, const std::string &macroValue)
+void Secrets::syncFromBuildTime(const std::string &key, const std::string &macroValue)
 {
     if (macroValue.empty())
         return;

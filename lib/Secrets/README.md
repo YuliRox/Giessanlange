@@ -1,15 +1,16 @@
 # Secrets
 
 Persistent credential storage for WiFi + MQTT, backed by an injected
-key-value store and seeded from build-time macros.
+key-value store and synced from build-time macros.
 
-Build-time macros are the "factory default": when the firmware sees a
-non-empty macro value that differs from what the store holds, it writes
-the macro value into the store. Empty macros leave the store alone.
-After seeding, all getters read from the store — so the same firmware
-running on two devices with different NVS contents will use different
-credentials, and later runtime mechanisms (provisioning, MQTT-driven
-config) can rewrite NVS without a code change.
+Build-time macros are authoritative on every boot: when the firmware
+sees a non-empty macro value that differs from what the store holds, it
+overwrites the store with the macro value. Empty macros leave the store
+alone. After this sync, all getters read from the store — so the same
+firmware running on two devices with different NVS contents will use
+different credentials, and later runtime mechanisms (provisioning,
+MQTT-driven config) can rewrite NVS without a code change (until the next
+boot re-applies any non-empty macro).
 
 ## Why this layer exists
 
@@ -51,15 +52,15 @@ secrets.hasCredentials();  // true iff wifiSsid is non-empty
 The class is free of Arduino headers; it compiles in `env:native` and
 the tests run on the host.
 
-## Seeding rules
+## Sync rules
 
-Per key, on construction:
+Per key, on construction (i.e. every boot):
 
 | Build-time macro | Store currently holds | Action |
 |---|---|---|
 | empty           | anything           | leave store alone |
 | non-empty       | same value         | leave store alone (idempotent) |
-| non-empty       | different value    | write macro to store (reseed) |
+| non-empty       | different value    | overwrite store with macro |
 
 After construction, getters always return what's in the store.
 
@@ -98,7 +99,7 @@ Macro values come from `platformio.ini`'s `[secrets]` section via
 ## Testing
 
 Stub the store with a `std::map<std::string,std::string>` and a put
-counter; assert seed behavior and idempotency. See
+counter; assert sync behavior and idempotency. See
 `test/test_secrets/test_secrets.cpp` for the six cases that cover the
 rules above.
 
