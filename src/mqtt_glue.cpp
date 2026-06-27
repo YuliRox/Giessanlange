@@ -166,6 +166,11 @@ void mqttSetup()
     mqttStatus = new MqttStatus(mqttPublishLambda, {});
     mqttEvents = new MqttEvents(mqttPublishLambda, {});
 
+    // PubSubClient's default 256-byte packet buffer leaves ~231 bytes for the
+    // payload, which a full status snapshot (both channels "PumpingManual")
+    // can exceed — publish() then silently fails and retries forever. Raise it.
+    mqttClient.setBufferSize(512);
+
     mqttBrokerHost = secrets->mqttBroker();
     if (!mqttBrokerHost.empty())
         mqttClient.setServer(mqttBrokerHost.c_str(), MQTT_PORT);
