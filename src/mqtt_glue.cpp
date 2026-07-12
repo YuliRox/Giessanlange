@@ -213,6 +213,7 @@ void mqttTick(unsigned long nowMs)
         s.pumpTimeCh2Ms       = anlage.getPumpTime(Channel::Two);
         s.wateringIntervalMs  = anlage.getWateringInterval();
         s.uptimeMs            = nowMs;
+        s.allIdle             = !anlage.isAnyPumping();
         mqttStatus->update(s, nowMs);
     }
 

@@ -132,6 +132,31 @@ void test_throttle_holds_back_rapid_changes()
     TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
 }
 
+void test_idle_change_uses_wider_throttle()
+{
+    PublishFake pub;
+    MqttStatus::Config cfg;
+    cfg.minIntervalMs = 1000;
+    cfg.idleIntervalMs = 10000;
+    MqttStatus status(pub.fn(), cfg);
+
+    auto s = defaultSnapshot();
+    s.allIdle = true;
+    status.update(s, 0);
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    // remainingWateringMs keeps ticking down while idle; past the (active)
+    // minIntervalMs but still within idleIntervalMs — should not republish.
+    s.remainingWateringMs = 900;
+    TEST_ASSERT_FALSE(status.update(s, 1500));
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    // Past idleIntervalMs: republishes.
+    s.remainingWateringMs = 500;
+    TEST_ASSERT_TRUE(status.update(s, 10000));
+    TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
+}
+
 void test_publish_failure_does_not_record_as_published()
 {
     PublishFake pub;
@@ -191,6 +216,7 @@ int main(int, char **)
     RUN_TEST(test_unchanged_snapshot_no_publish);
     RUN_TEST(test_heartbeat_republishes_unchanged_snapshot);
     RUN_TEST(test_throttle_holds_back_rapid_changes);
+    RUN_TEST(test_idle_change_uses_wider_throttle);
     RUN_TEST(test_publish_failure_does_not_record_as_published);
     RUN_TEST(test_invalidate_forces_republish_even_if_snapshot_unchanged);
     RUN_TEST(test_changed_snapshot_after_throttle_publishes);

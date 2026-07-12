@@ -71,8 +71,12 @@ bool MqttStatus::update(const Snapshot &snapshot, unsigned long nowMs)
         const bool changed = snapshot != _lastPublished; // uptime excluded
         if (changed)
         {
-            // Meaningful change: publish, but throttle bursts.
-            if (sincePublish < _config.minIntervalMs)
+            // Meaningful change: publish, but throttle bursts. Idle uses a
+            // wider floor since remainingWateringMs alone keeps this branch
+            // "changed" on nearly every tick.
+            const unsigned long floorMs =
+                snapshot.allIdle ? _config.idleIntervalMs : _config.minIntervalMs;
+            if (sincePublish < floorMs)
                 return false;
         }
         else
