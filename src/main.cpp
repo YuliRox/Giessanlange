@@ -22,7 +22,7 @@ void setup()
 
     delay(1000);
 
-    Serial.println("Hello World Giessanlange!");
+    Serial.println("Hello World Giessanlage!");
 
     initSecrets();
     wifiSetup();
