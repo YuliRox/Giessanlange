@@ -159,6 +159,10 @@ void mqttSetup()
             anlage.setPumpTime(Channel::One, v.pumpTimeCh1Ms);
             anlage.setPumpTime(Channel::Two, v.pumpTimeCh2Ms);
             anlage.setWateringInterval(v.wateringIntervalMs);
+            // setWateringInterval() only changes the configured duration; the
+            // in-flight countdown keeps running against the old value unless
+            // explicitly restarted here.
+            anlage.resetWateringTimer();
         },
         cfgCfg);
     mqttConfig->initFromNvs();

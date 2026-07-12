@@ -9,9 +9,9 @@ void test_defaults_are_initialized()
     Giessanlage g;
     TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::One));
     TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::Two));
-    TEST_ASSERT_EQUAL_UINT32(Giessanlage::INTERVAL_24H, g.getWateringInterval());
-    TEST_ASSERT_EQUAL_UINT32(Giessanlage::INTERVAL_30S, g.getPumpTime(Channel::One));
-    TEST_ASSERT_EQUAL_UINT32(Giessanlage::INTERVAL_30S, g.getPumpTime(Channel::Two));
+    TEST_ASSERT_EQUAL_UINT32(Giessanlage::INTERVAL_12H, g.getWateringInterval());
+    TEST_ASSERT_EQUAL_UINT32(Giessanlage::INTERVAL_02M, g.getPumpTime(Channel::One));
+    TEST_ASSERT_EQUAL_UINT32(Giessanlage::INTERVAL_02M, g.getPumpTime(Channel::Two));
 }
 
 void test_trigger_and_stop_pump()
@@ -108,6 +108,34 @@ void test_per_channel_pump_durations_are_independent()
     TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::Two));
 }
 
+// Regression: an MQTT config update applies the new pump/watering values via
+// setPumpTime()/setWateringInterval(), then must call resetWateringTimer() —
+// mirroring src/mqtt_glue.cpp's apply callback — or the in-flight countdown
+// keeps running against the stale interval instead of the newly configured one.
+void test_config_update_resets_watering_timer()
+{
+    Giessanlage g(1000UL, 200UL, 200UL);
+
+    // Idle timer starts at wateringTime - maxPumpTime = 800 ms; run it
+    // partway down so there is a stale countdown in flight.
+    g.tick(500UL);
+    TEST_ASSERT_EQUAL_UINT32(300UL, g.getRemainingWateringInterval());
+
+    // Simulate an incoming broker config update with a much longer interval.
+    TEST_ASSERT_TRUE(g.setPumpTime(Channel::One, 200UL));
+    TEST_ASSERT_TRUE(g.setPumpTime(Channel::Two, 200UL));
+    TEST_ASSERT_TRUE(g.setWateringInterval(4000UL));
+
+    // Without resetWateringTimer(), the countdown would still read the stale
+    // 300 ms left over from the old interval.
+    TEST_ASSERT_EQUAL_UINT32(300UL, g.getRemainingWateringInterval());
+
+    TEST_ASSERT_TRUE(g.resetWateringTimer());
+
+    // Now it reflects the new interval: 4000 - maxPumpTime(200) = 3800 ms.
+    TEST_ASSERT_EQUAL_UINT32(3800UL, g.getRemainingWateringInterval());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -119,5 +147,6 @@ int main(int, char **)
     RUN_TEST(test_cannot_trigger_twice_while_pumping);
     RUN_TEST(test_per_channel_stop_does_not_immediately_retrigger_auto);
     RUN_TEST(test_per_channel_pump_durations_are_independent);
+    RUN_TEST(test_config_update_resets_watering_timer);
     return UNITY_END();
 }
