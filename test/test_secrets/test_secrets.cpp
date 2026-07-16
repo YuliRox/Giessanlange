@@ -33,9 +33,10 @@ Secrets::BuildTimeValues makeBuildTime(
     const std::string &pass = "",
     const std::string &user = "",
     const std::string &mpass = "",
-    const std::string &broker = "")
+    const std::string &broker = "",
+    const std::string &otaPass = "")
 {
-    return Secrets::BuildTimeValues{ssid, pass, user, mpass, broker};
+    return Secrets::BuildTimeValues{ssid, pass, user, mpass, broker, otaPass};
 }
 } // namespace
 
@@ -43,15 +44,16 @@ void test_first_boot_syncs_from_macros()
 {
     FakeKv kv;
     Secrets secrets(kv.make(),
-                    makeBuildTime("MyWifi", "MyPass", "u", "p", "192.168.1.10"));
+                    makeBuildTime("MyWifi", "MyPass", "u", "p", "192.168.1.10", "otaSecret"));
 
     TEST_ASSERT_EQUAL_STRING("MyWifi", secrets.wifiSsid().c_str());
     TEST_ASSERT_EQUAL_STRING("MyPass", secrets.wifiPass().c_str());
     TEST_ASSERT_EQUAL_STRING("u", secrets.mqttUser().c_str());
     TEST_ASSERT_EQUAL_STRING("p", secrets.mqttPass().c_str());
     TEST_ASSERT_EQUAL_STRING("192.168.1.10", secrets.mqttBroker().c_str());
+    TEST_ASSERT_EQUAL_STRING("otaSecret", secrets.otaPass().c_str());
     TEST_ASSERT_TRUE(secrets.hasCredentials());
-    TEST_ASSERT_EQUAL_INT(5, kv.putCount);
+    TEST_ASSERT_EQUAL_INT(6, kv.putCount);
 }
 
 void test_second_boot_is_idempotent_when_macros_unchanged()

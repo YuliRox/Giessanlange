@@ -2,6 +2,7 @@
 
 #include "app_state.h"
 #include "wifi_glue.h"
+#include "ota_glue.h"
 #include "mqtt_glue.h"
 #include "io_glue.h"
 
@@ -26,6 +27,7 @@ void setup()
 
     initSecrets();
     wifiSetup();
+    otaSetup();
     mqttSetup();
 }
 
@@ -44,6 +46,7 @@ void loop()
 
     anlage.tick(elapsedTime);
     wifiTick(elapsedTime);
+    otaTick();
     mqttTick(currentTime);
     ioTick(currentTime, elapsedTime);
 }

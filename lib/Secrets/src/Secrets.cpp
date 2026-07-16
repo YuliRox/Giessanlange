@@ -7,6 +7,7 @@ constexpr const char *KEY_WIFI_PASS   = "wifi_pass";
 constexpr const char *KEY_MQTT_USER   = "mqtt_user";
 constexpr const char *KEY_MQTT_PASS   = "mqtt_pass";
 constexpr const char *KEY_MQTT_BROKER = "mqtt_broker";
+constexpr const char *KEY_OTA_PASS    = "ota_pass";
 } // namespace
 
 Secrets::Secrets(KvStore store, const BuildTimeValues &buildTime)
@@ -17,6 +18,7 @@ Secrets::Secrets(KvStore store, const BuildTimeValues &buildTime)
     syncFromBuildTime(KEY_MQTT_USER, buildTime.mqttUser);
     syncFromBuildTime(KEY_MQTT_PASS, buildTime.mqttPass);
     syncFromBuildTime(KEY_MQTT_BROKER, buildTime.mqttBroker);
+    syncFromBuildTime(KEY_OTA_PASS, buildTime.otaPass);
 }
 
 void Secrets::syncFromBuildTime(const std::string &key, const std::string &macroValue)
@@ -32,6 +34,7 @@ std::string Secrets::wifiPass() const   { return _store.get(KEY_WIFI_PASS); }
 std::string Secrets::mqttUser() const   { return _store.get(KEY_MQTT_USER); }
 std::string Secrets::mqttPass() const   { return _store.get(KEY_MQTT_PASS); }
 std::string Secrets::mqttBroker() const { return _store.get(KEY_MQTT_BROKER); }
+std::string Secrets::otaPass() const    { return _store.get(KEY_OTA_PASS); }
 
 bool Secrets::hasCredentials() const
 {

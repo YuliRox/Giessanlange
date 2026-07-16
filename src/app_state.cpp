@@ -61,7 +61,7 @@ void initSecrets()
           };
 
     Secrets::BuildTimeValues build{
-        WIFI_SSID, WIFI_PASS, MQTT_USER, MQTT_PASS, MQTT_BROKER,
+        WIFI_SSID, WIFI_PASS, MQTT_USER, MQTT_PASS, MQTT_BROKER, OTA_PASS,
     };
 
     secrets = new Secrets(std::move(secretsStore), build);
