@@ -17,6 +17,7 @@ For details:
 - **Sensor wiring notes** — `docs/SENSOR_WIRING_NOTES.md`
 - **MOSFET stage details** — `docs/ESP32_MOSFET_NEXT_STEPS.md`
 - **LAN OTA updates** — `docs/OTA_UPDATES.md`
+- **MQTT remote commands** — `docs/MQTT_COMMANDS.md`
 
 The schematic is the source of truth. Docs follow it; firmware constants in `src/main.cpp` follow the docs.
 
