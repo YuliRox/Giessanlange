@@ -112,6 +112,12 @@ void Giessanlage::resetPumpTimerInternal(Channel channel)
     this->channels[idx(channel)].pumpTimer = this->channels[idx(channel)].pumpTime;
 }
 
+bool Giessanlage::resetPumpTimer(Channel channel)
+{
+    resetPumpTimerInternal(channel);
+    return true;
+}
+
 bool Giessanlage::setWateringInterval(unsigned long time)
 {
     if (time == 0UL)

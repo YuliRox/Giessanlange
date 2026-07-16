@@ -63,6 +63,10 @@ public:
     unsigned long getWateringInterval() const;
     bool resetWateringTimer();
 
+    /// @brief restart the in-flight pump countdown to the current pumpTime,
+    /// without changing state (unlike triggerPump/stopPump)
+    bool resetPumpTimer(Channel channel);
+
     unsigned long getRemainingPumpTime(Channel channel) const;
     unsigned long getRemainingWateringInterval() const;
 

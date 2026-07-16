@@ -13,6 +13,7 @@
 #include "MqttStatus.h"
 #include "MqttEvents.h"
 #include "MqttConfig.h"
+#include "MqttCommands.h"
 #include "WifiManager.h"
 #include "app_state.h"
 #include "wifi_glue.h"
@@ -29,6 +30,8 @@ constexpr const char *PREFS_CONFIG = "giessanlage_cfg";
 constexpr const char *MQTT_CLIENT_ID            = "giessanlage";
 constexpr const char *MQTT_AVAILABILITY         = "giessanlage/availability";
 constexpr const char *MQTT_CONFIG_TOPIC         = "giessanlage/config";
+constexpr const char *MQTT_COMMANDS_TOPIC_CH1    = "giessanlage/commands/ch1";
+constexpr const char *MQTT_COMMANDS_TOPIC_CH2    = "giessanlage/commands/ch2";
 constexpr int           MQTT_PORT               = 1883;
 constexpr unsigned long MQTT_RECONNECT_DELAY_MS = 5000;
 constexpr unsigned long MQTT_BROKER_GRACE_MS    = 3000;
@@ -49,6 +52,7 @@ std::string mqttBrokerHost;
 
 MqttStatus *mqttStatus = nullptr;
 MqttConfig *mqttConfig = nullptr;
+MqttCommands *mqttCommands = nullptr;
 
 unsigned long lastMqttConnectAttemptMs = 0;
 unsigned long mqttSubscribedAtMs       = 0;
@@ -69,6 +73,17 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
     {
         const bool changed = mqttConfig->onConfigPayload(p);
         if (changed && mqttStatus != nullptr)
+            mqttStatus->invalidate();
+    }
+    else if (mqttCommands != nullptr &&
+             (std::strcmp(topic, MQTT_COMMANDS_TOPIC_CH1) == 0 ||
+              std::strcmp(topic, MQTT_COMMANDS_TOPIC_CH2) == 0))
+    {
+        const Channel channel = std::strcmp(topic, MQTT_COMMANDS_TOPIC_CH1) == 0
+            ? Channel::One
+            : Channel::Two;
+        const bool applied = mqttCommands->dispatch(anlage, channel, p, millis());
+        if (applied && mqttStatus != nullptr)
             mqttStatus->invalidate();
     }
 }
@@ -104,6 +119,8 @@ bool tryMqttConnect(unsigned long nowMs)
 
     mqttClient.publish(MQTT_AVAILABILITY, "online", /*retained=*/true);
     mqttClient.subscribe(MQTT_CONFIG_TOPIC);
+    mqttClient.subscribe(MQTT_COMMANDS_TOPIC_CH1);
+    mqttClient.subscribe(MQTT_COMMANDS_TOPIC_CH2);
     mqttSubscribedAtMs = nowMs;
     mqttGraceFired = false;
 
@@ -169,6 +186,7 @@ void mqttSetup()
 
     mqttStatus = new MqttStatus(mqttPublishLambda, {});
     mqttEvents = new MqttEvents(mqttPublishLambda, {});
+    mqttCommands = new MqttCommands();
 
     // PubSubClient's default 256-byte packet buffer leaves ~231 bytes for the
     // payload, which a full status snapshot (both channels "PumpingManual")
