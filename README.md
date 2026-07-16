@@ -16,6 +16,7 @@ For details:
 - **Bill of materials** — `docs/HARDWARE_BOM.md`
 - **Sensor wiring notes** — `docs/SENSOR_WIRING_NOTES.md`
 - **MOSFET stage details** — `docs/ESP32_MOSFET_NEXT_STEPS.md`
+- **LAN OTA updates** — `docs/OTA_UPDATES.md`
 
 The schematic is the source of truth. Docs follow it; firmware constants in `src/main.cpp` follow the docs.
 
@@ -50,15 +51,18 @@ The HAL pattern in `docs/HAL_TESTABILITY.md` is the project convention: classes 
 
 ## Build, flash, test
 
-PlatformIO. Two environments in `platformio.ini`:
+PlatformIO. Environments in `platformio.ini`:
 
-- `esp32-c6-devkitc-1` — real hardware target.
+- `esp32-c6-devkitc-1` — real hardware target, serial flash.
+- `esp32-c6-devkitc-1-ota` — same firmware, flashed over WiFi (see `docs/OTA_UPDATES.md`).
 - `native` — host build for unit tests.
 
 ```bash
 pio run                    # build for ESP32-C6 (default env)
-pio run -t upload          # flash the device
+pio run -t upload          # flash the device over serial
 pio device monitor         # serial monitor @ 115200 baud
+
+pio run -e esp32-c6-devkitc-1-ota -t upload   # flash over LAN (docs/OTA_UPDATES.md)
 
 pio test -e native                  # run all host unit tests
 pio test -e native -f test_logic    # filter by suite directory name
