@@ -1,6 +1,6 @@
 # Gießanlage
 
-Solar-powered ESP32-C6 plant watering controller. Two channels, MOSFET pump driver, three buttons. Talks to a local MQTT broker for status / config (in progress).
+Solar-powered ESP32-C6 plant watering controller. Two channels, MOSFET pump driver, three buttons. Talks to a local MQTT broker for status, events, config sync, and remote commands.
 
 ## Hardware
 
@@ -17,6 +17,7 @@ For details:
 - **Sensor wiring notes** — `docs/SENSOR_WIRING_NOTES.md`
 - **MOSFET stage details** — `docs/ESP32_MOSFET_NEXT_STEPS.md`
 - **LAN OTA updates** — `docs/OTA_UPDATES.md`
+- **MQTT integration** (status / events / config) — `docs/MQTT.md`
 - **MQTT remote commands** — `docs/MQTT_COMMANDS.md`
 
 The schematic is the source of truth. Docs follow it; firmware constants in `src/main.cpp` follow the docs.
