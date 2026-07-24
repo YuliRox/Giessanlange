@@ -12,6 +12,9 @@ compile_commands.json
 CLAUDE.local.md
 secrets.ini
 
+# Local credentials for tooling (HA token, etc.) — never commit
+.env
+
 # Devcontainer Claude Code state (repo-scoped, not shared)
 .devcontainer/.claude-home/*
 !.devcontainer/.claude-home/.gitkeep
