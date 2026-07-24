@@ -19,6 +19,7 @@ For details:
 - **LAN OTA updates** — `docs/OTA_UPDATES.md`
 - **MQTT integration** (status / events / config) — `docs/MQTT.md`
 - **MQTT remote commands** — `docs/MQTT_COMMANDS.md`
+- **Home Assistant integration** (entities + dashboard) — `docs/HOME_ASSISTANT.md`
 
 The schematic is the source of truth. Docs follow it; firmware constants in `src/main.cpp` follow the docs.
 

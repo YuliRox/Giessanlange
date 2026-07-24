@@ -1,0 +1,96 @@
+{
+  "title": "Gießanlage",
+  "views": [
+    {
+      "title": "Gießanlage",
+      "path": "overview",
+      "icon": "mdi:watering-can",
+      "badges": [
+        { "type": "entity", "entity": "binary_sensor.giessanlage_online" }
+      ],
+      "cards": [
+        {
+          "type": "grid",
+          "columns": 2,
+          "square": false,
+          "cards": [
+            {
+              "type": "tile",
+              "entity": "switch.giessanlage_pump_1",
+              "name": "Pump 1",
+              "icon": "mdi:water-pump",
+              "features": [{ "type": "toggle" }]
+            },
+            {
+              "type": "tile",
+              "entity": "switch.giessanlage_pump_2",
+              "name": "Pump 2",
+              "icon": "mdi:water-pump",
+              "features": [{ "type": "toggle" }]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "columns": 2,
+          "square": false,
+          "cards": [
+            {
+              "type": "entities",
+              "title": "Channel 1",
+              "state_color": true,
+              "entities": [
+                { "entity": "sensor.giessanlage_pump_1_state", "name": "State" },
+                { "entity": "sensor.giessanlage_pump_1_remaining", "name": "Remaining" },
+                { "entity": "number.giessanlage_pump_1_duration", "name": "Run duration" }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "Channel 2",
+              "state_color": true,
+              "entities": [
+                { "entity": "sensor.giessanlage_pump_2_state", "name": "State" },
+                { "entity": "sensor.giessanlage_pump_2_remaining", "name": "Remaining" },
+                { "entity": "number.giessanlage_pump_2_duration", "name": "Run duration" }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "markdown",
+          "content": "<h2 style=\"text-align:center;margin:0\">⏳ Next watering in</h2>\n<h1 style=\"text-align:center;font-family:monospace;letter-spacing:2px;margin:4px 0 0\">{{ states('sensor.giessanlage_next_watering_countdown') }}</h1>"
+        },
+        {
+          "type": "entities",
+          "title": "Watering schedule",
+          "icon": "mdi:calendar-clock",
+          "entities": [
+            { "entity": "number.giessanlage_watering_interval", "name": "Interval" },
+            { "entity": "sensor.giessanlage_next_watering_countdown", "name": "Countdown (HH:mm:ss)" },
+            { "entity": "sensor.giessanlage_next_watering_in", "name": "Next watering in" }
+          ]
+        },
+        {
+          "type": "gauge",
+          "entity": "sensor.giessanlage_next_watering_in",
+          "name": "Next watering",
+          "unit": "min",
+          "min": 0,
+          "max": 720,
+          "needle": true,
+          "severity": { "green": 0, "yellow": 120, "red": 600 }
+        },
+        {
+          "type": "entities",
+          "title": "Diagnostics",
+          "icon": "mdi:information-outline",
+          "entities": [
+            { "entity": "binary_sensor.giessanlage_online", "name": "Connection" },
+            { "entity": "sensor.giessanlage_uptime", "name": "Uptime" }
+          ]
+        }
+      ]
+    }
+  ]
+}
