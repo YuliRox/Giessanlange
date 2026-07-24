@@ -103,6 +103,26 @@ Pump outputs are **active-high** N-MOSFET gate drive (`HIGH` = pump on). Buttons
 
 ## Status
 
+Working today:
+
+- [x] Pump state machine (manual + auto watering timer), host-tested
+- [x] Debounced buttons (pump 1 / pump 2 / cancel)
+- [x] MOSFET pump driver stage (schematic; firmware drives the gates correctly)
+- [x] WiFi connection with mDNS hostname (`giessanlage.local`)
+- [x] MQTT: retained status snapshot, live pump/button events, availability LWT — `docs/MQTT.md`
+- [x] MQTT config sync (broker ↔ NVS, broker-wins-when-reachable) — `docs/MQTT.md`
+- [x] MQTT remote pump/timer commands, per channel — `docs/MQTT_COMMANDS.md`
+- [x] LAN firmware updates over WiFi (ArduinoOTA) — `docs/OTA_UPDATES.md`
+
+In progress / planned (see the GitHub issue tracker; MVP milestone):
+
+- [ ] Baseplate / enclosure assembly
+- [ ] On-device 2.9" e-paper status UI
+- [ ] Sensor integration: Chirp moisture, VL53L0X TOF, A02YYUW ultrasonic (libs exist; not yet wired in `main.cpp`)
+- [ ] NTP wall-clock timestamps (events currently carry device uptime)
+- [ ] Home Assistant MQTT discovery
+- [ ] Safety / diagnostics items
+
 ## Development Container
 
 A dev container (PlatformIO, Node, GitHub CLI, Claude Code, and a Mosquitto MQTT broker)
@@ -110,6 +130,7 @@ is provided for building, testing, and flashing. See `.devcontainer/README.md` f
 USB passthrough for the ESP32, and MQTT details.
 
 ## Related Notes
-Working today: pump state machine, debounced buttons, MOSFET pump driver stage (schematic; firmware drives the gates correctly). All `native` test suites green.
 
-In progress / planned: see the GitHub issue tracker. MVP milestone covers the baseplate assembly, WiFi + MQTT integration, on-device e-paper UI, and a few safety/diagnostics items.
+All `native` test suites are green. Current feature status is tracked in
+the [Status](#status) section above; open work lives in the GitHub issue
+tracker under the MVP milestone.
