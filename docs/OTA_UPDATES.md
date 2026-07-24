@@ -82,3 +82,57 @@ subsequent OTA uploads must use the new password.
   currently-running firmware doesn't match what's in your local
   `secrets.ini`/`platformio.ini` right now. Re-flash over serial with
   matching secrets first if they've drifted.
+
+### `No response from device` after `Authenticating ... OK` (Windows Firewall)
+
+This is the most common Windows snag, and it's misleading — the upload
+gets *past* auth, then stalls:
+
+```
+Authenticating (PBKDF2-HMAC-SHA256)...
+OK
+Waiting for device...
+No response from device
+```
+
+The device and password are fine. espota's handshake/auth runs over
+**UDP** (which Windows Firewall allows as stateful return traffic), but
+the actual firmware image needs the **device to open a fresh, unsolicited
+inbound TCP connection back to your PC**. Windows Firewall blocks that by
+default — so auth succeeds and the transfer never starts.
+
+The trap: the uploader runs as `…\.platformio\python3\python.exe`. If a
+non-interactive run (IDE task, CI, background) ever got silently denied,
+Windows may have **auto-created inbound _block_ rules** for that
+executable. Block rules override allow rules, so just adding an allow
+isn't enough — the block has to go first.
+
+Fix (elevated / "Run as administrator" PowerShell):
+
+```powershell
+# 1) Disable any auto-created inbound BLOCK rules for the espota python.
+Get-NetFirewallRule -Direction Inbound -Action Block -Enabled True |
+  Where-Object { ($_ | Get-NetFirewallApplicationFilter).Program -match 'platformio.*python' } |
+  Disable-NetFirewallRule
+
+# 2) Allow inbound from the device's IP (any program/port). Scope it to the
+#    device so you're not opening the host up broadly.
+New-NetFirewallRule -DisplayName "Giessanlage OTA device" -Direction Inbound `
+  -Action Allow -RemoteAddress 192.168.50.12 -Profile Any
+```
+
+Then re-run the upload. Notes:
+
+- **Easy path if no block rule exists yet:** run the upload in a normal
+  (interactive) terminal and click **Allow access** on the Windows
+  Firewall popup when it appears — background/IDE runs can't show that
+  prompt, which is exactly how the silent block rules get created.
+- **Multi-homed hosts** (WSL, Docker, Hyper-V add extra adapters like
+  `172.x` / `192.168.x`): espota advertises the host IP via the UDP
+  invitation's source address, which the OS routes over the adapter that
+  reaches the device — so this is usually *not* the cause if auth already
+  succeeded. If auth itself times out, check that the device's subnet
+  adapter is the one being used.
+- The device keeps running its current firmware if OTA fails — the new
+  image is only booted after a fully received, verified transfer, so a
+  failed/blocked OTA is non-destructive.
