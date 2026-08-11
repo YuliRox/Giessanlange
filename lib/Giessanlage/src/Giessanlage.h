@@ -11,14 +11,16 @@ public:
         Two = 1,
     };
 
+    static const unsigned long INTERVAL_02M = 2UL * 60UL * 1000UL;
+    static const unsigned long INTERVAL_01M = 60UL * 1000UL;
     static const unsigned long INTERVAL_30S = 30UL * 1000UL;
     static const unsigned long INTERVAL_12H = 12UL * 60UL * 60UL * 1000UL;
     static const unsigned long INTERVAL_24H = 2UL * INTERVAL_12H;
 
     Giessanlage(
-        unsigned long wateringTime = INTERVAL_24H,
-        unsigned long pumpTimeCh1 = INTERVAL_30S,
-        unsigned long pumpTimeCh2 = INTERVAL_30S);
+        unsigned long wateringTime = INTERVAL_12H,
+        unsigned long pumpTimeCh1 = INTERVAL_02M,
+        unsigned long pumpTimeCh2 = INTERVAL_02M);
 
     enum State : int
     {
@@ -60,6 +62,10 @@ public:
     bool setWateringInterval(unsigned long time);
     unsigned long getWateringInterval() const;
     bool resetWateringTimer();
+
+    /// @brief restart the in-flight pump countdown to the current pumpTime,
+    /// without changing state (unlike triggerPump/stopPump)
+    bool resetPumpTimer(Channel channel);
 
     unsigned long getRemainingPumpTime(Channel channel) const;
     unsigned long getRemainingWateringInterval() const;

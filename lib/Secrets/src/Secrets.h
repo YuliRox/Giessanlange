@@ -26,6 +26,7 @@ public:
         std::string mqttUser;
         std::string mqttPass;
         std::string mqttBroker;
+        std::string otaPass;
     };
 
     /// Construct, syncing the store from any non-empty build-time value
@@ -38,6 +39,7 @@ public:
     std::string mqttUser() const;
     std::string mqttPass() const;
     std::string mqttBroker() const;
+    std::string otaPass() const;
 
     /// True iff `wifiSsid()` is non-empty. Use as a quick gate before
     /// attempting WiFi association on devices with no credentials yet.

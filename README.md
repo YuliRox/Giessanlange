@@ -1,6 +1,6 @@
 # Gießanlage
 
-Solar-powered ESP32-C6 plant watering controller. Two channels, MOSFET pump driver, three buttons. Talks to a local MQTT broker for status / config (in progress).
+Solar-powered ESP32-C6 plant watering controller. Two channels, MOSFET pump driver, three buttons. Talks to a local MQTT broker for status, events, config sync, and remote commands.
 
 ## Hardware
 
@@ -16,6 +16,9 @@ For details:
 - **Bill of materials** — `docs/HARDWARE_BOM.md`
 - **Sensor wiring notes** — `docs/SENSOR_WIRING_NOTES.md`
 - **MOSFET stage details** — `docs/ESP32_MOSFET_NEXT_STEPS.md`
+- **LAN OTA updates** — `docs/OTA_UPDATES.md`
+- **MQTT integration** (status / events / config) — `docs/MQTT.md`
+- **MQTT remote commands** — `docs/MQTT_COMMANDS.md`
 
 The schematic is the source of truth. Docs follow it; firmware constants in `src/main.cpp` follow the docs.
 
@@ -50,15 +53,18 @@ The HAL pattern in `docs/HAL_TESTABILITY.md` is the project convention: classes 
 
 ## Build, flash, test
 
-PlatformIO. Two environments in `platformio.ini`:
+PlatformIO. Environments in `platformio.ini`:
 
-- `esp32-c6-devkitc-1` — real hardware target.
+- `esp32-c6-devkitc-1` — real hardware target, serial flash.
+- `esp32-c6-devkitc-1-ota` — same firmware, flashed over WiFi (see `docs/OTA_UPDATES.md`).
 - `native` — host build for unit tests.
 
 ```bash
 pio run                    # build for ESP32-C6 (default env)
-pio run -t upload          # flash the device
+pio run -t upload          # flash the device over serial
 pio device monitor         # serial monitor @ 115200 baud
+
+pio run -e esp32-c6-devkitc-1-ota -t upload   # flash over LAN (docs/OTA_UPDATES.md)
 
 pio test -e native                  # run all host unit tests
 pio test -e native -f test_logic    # filter by suite directory name
@@ -97,6 +103,26 @@ Pump outputs are **active-high** N-MOSFET gate drive (`HIGH` = pump on). Buttons
 
 ## Status
 
+Working today:
+
+- [x] Pump state machine (manual + auto watering timer), host-tested
+- [x] Debounced buttons (pump 1 / pump 2 / cancel)
+- [x] MOSFET pump driver stage (schematic; firmware drives the gates correctly)
+- [x] WiFi connection with mDNS hostname (`giessanlage.local`)
+- [x] MQTT: retained status snapshot, live pump/button events, availability LWT — `docs/MQTT.md`
+- [x] MQTT config sync (broker ↔ NVS, broker-wins-when-reachable) — `docs/MQTT.md`
+- [x] MQTT remote pump/timer commands, per channel — `docs/MQTT_COMMANDS.md`
+- [x] LAN firmware updates over WiFi (ArduinoOTA) — `docs/OTA_UPDATES.md`
+
+In progress / planned (see the GitHub issue tracker; MVP milestone):
+
+- [ ] Baseplate / enclosure assembly
+- [ ] On-device 2.9" e-paper status UI
+- [ ] Sensor integration: Chirp moisture, VL53L0X TOF, A02YYUW ultrasonic (libs exist; not yet wired in `main.cpp`)
+- [ ] NTP wall-clock timestamps (events currently carry device uptime)
+- [ ] Home Assistant MQTT discovery
+- [ ] Safety / diagnostics items
+
 ## Development Container
 
 A dev container (PlatformIO, Node, GitHub CLI, Claude Code, and a Mosquitto MQTT broker)
@@ -104,6 +130,7 @@ is provided for building, testing, and flashing. See `.devcontainer/README.md` f
 USB passthrough for the ESP32, and MQTT details.
 
 ## Related Notes
-Working today: pump state machine, debounced buttons, MOSFET pump driver stage (schematic; firmware drives the gates correctly). All `native` test suites green.
 
-In progress / planned: see the GitHub issue tracker. MVP milestone covers the baseplate assembly, WiFi + MQTT integration, on-device e-paper UI, and a few safety/diagnostics items.
+All `native` test suites are green. Current feature status is tracked in
+the [Status](#status) section above; open work lives in the GitHub issue
+tracker under the MVP milestone.
