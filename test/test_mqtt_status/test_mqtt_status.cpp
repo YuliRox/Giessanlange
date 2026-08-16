@@ -293,6 +293,60 @@ void test_state_transition_still_coalesced_within_min_interval()
     TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
 }
 
+// --- pause flag (#65) -------------------------------------------------------
+
+void test_payload_carries_paused_flag()
+{
+    auto s = defaultSnapshot();
+    TEST_ASSERT_TRUE(MqttStatus::buildPayload(s).find("\"paused\":false") != std::string::npos);
+
+    s.paused = true;
+    TEST_ASSERT_TRUE(MqttStatus::buildPayload(s).find("\"paused\":true") != std::string::npos);
+}
+
+void test_pause_change_bypasses_idle_throttle()
+{
+    // Same class as #66: pausing happens while idle, so without treating the
+    // flag as a discrete edge it would sit behind the 5 min idle floor and a
+    // dashboard would keep showing "watering" long after the pause landed.
+    PublishFake pub;
+    MqttStatus::Config cfg;
+    cfg.minIntervalMs = 1000;
+    cfg.idleIntervalMs = 300000;
+    MqttStatus status(pub.fn(), cfg);
+
+    auto s = defaultSnapshot();
+    s.allIdle = true;
+    TEST_ASSERT_TRUE(status.update(s, 0));
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    s.paused = true;
+    TEST_ASSERT_TRUE(status.update(s, 2000));
+    TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
+    TEST_ASSERT_TRUE(pub.calls[1].payload.find("\"paused\":true") != std::string::npos);
+}
+
+void test_pause_change_still_coalesced_within_min_interval()
+{
+    // Bypassing the idle floor must not mean bypassing burst coalescing.
+    PublishFake pub;
+    MqttStatus::Config cfg;
+    cfg.minIntervalMs = 1000;
+    cfg.idleIntervalMs = 300000;
+    MqttStatus status(pub.fn(), cfg);
+
+    auto s = defaultSnapshot();
+    s.allIdle = true;
+    TEST_ASSERT_TRUE(status.update(s, 0));
+
+    s.paused = true;
+    TEST_ASSERT_FALSE(status.update(s, 500)); // inside minIntervalMs
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    TEST_ASSERT_TRUE(status.update(s, 1500));
+    TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -308,5 +362,8 @@ int main(int, char **)
     RUN_TEST(test_pump_off_transition_bypasses_idle_throttle);
     RUN_TEST(test_pump_on_transition_uses_min_interval);
     RUN_TEST(test_state_transition_still_coalesced_within_min_interval);
+    RUN_TEST(test_payload_carries_paused_flag);
+    RUN_TEST(test_pause_change_bypasses_idle_throttle);
+    RUN_TEST(test_pause_change_still_coalesced_within_min_interval);
     return UNITY_END();
 }

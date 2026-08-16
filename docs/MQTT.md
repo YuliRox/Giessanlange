@@ -63,9 +63,14 @@ event stream. All fields always present; state enums are strings.
   "pump_time_ch1_ms": 30000,
   "pump_time_ch2_ms": 30000,
   "watering_interval_ms": 86400000,
+  "paused": false,
   "uptime_ms": 0
 }
 ```
+
+`paused` mirrors the config flag of the same name, so a consumer can
+display the current state and detect drift between what it asked for and
+what the device applied.
 
 **Publish cadence** (see `MqttStatus::Config`):
 
@@ -74,6 +79,9 @@ event stream. All fields always present; state enums are strings.
 - While **all channels are idle**, publishes are held to at most once
   per **5 min** — `remaining_watering_ms` counts down every tick, so
   without a wider idle floor the snapshot would look "changed" forever.
+  A change to `state_ch1`/`state_ch2` or to `paused` is never countdown
+  churn, so those edges always publish at the 1 s floor instead of
+  waiting out the idle interval.
 - Even with nothing meaningful changing, a **30 s heartbeat** keeps the
   retained snapshot fresh.
 - After a reconnect the device force-republishes once, so the broker
@@ -110,9 +118,41 @@ authors its own config while the broker is present — it reflects.
 {
   "pump_time_ch1_ms": 30000,
   "pump_time_ch2_ms": 45000,
-  "watering_interval_ms": 86400000
+  "watering_interval_ms": 86400000,
+  "paused": false
 }
 ```
+
+### `paused` — suppress automatic watering
+
+A persisted flag that stops the device watering on its own, without
+touching the configured interval. Use it when it has rained, the cistern
+is low, tubing is being worked on, or frost is expected — the cases where
+stretching `watering_interval_ms` would work but means remembering the
+old value, and forgetting to restore it leaves the plants dry
+indefinitely.
+
+- **Manual control keeps working.** The physical buttons and the
+  `toggle_pump` command are unaffected. Paused means "don't water on your
+  own", not "refuse to work" — during maintenance you want to run a pump
+  by hand precisely while automatic watering is off.
+- **A cycle already running is allowed to finish.** The flag suppresses
+  the `Idle → PumpingAuto` transition; it is not an emergency stop. To
+  stop a running cycle, use `toggle_pump` or the cancel button.
+- **The countdown keeps running and is rearmed on each expiry.** A pause
+  therefore *skips* cycles rather than banking them: resuming never
+  releases a backlogged watering, and the schedule keeps its normal
+  cadence rather than shifting by the length of the pause.
+- **Optional field.** A retained config written by an older firmware has
+  no `paused` key; it reads as `false` rather than being rejected, so an
+  upgrade does not strand the device on defaults. Accepts `true`/`false`
+  and `1`/`0`.
+- **Survives reboot** via NVS, so a pause set before an absence is not
+  forgotten by a power cut.
+
+Note that because a config update also resets the in-flight watering
+countdown (below), clearing `paused` starts a fresh full interval — the
+device will not water the instant you unpause.
 
 Behavior:
 
@@ -126,10 +166,11 @@ Behavior:
 - **Broker silent:** if no retained config arrives within a ~3 s grace
   window, the device republishes its NVS values as the retained config,
   so the broker now reflects truth.
-- **Validation:** a payload is accepted only if every field is `> 0`
-  and each `pump_time_*` is `< watering_interval_ms`. Malformed JSON,
-  missing fields, or out-of-range values are rejected silently and the
-  device keeps running on the last valid config.
+- **Validation:** a payload is accepted only if every numeric field is
+  `> 0` and each `pump_time_*` is `< watering_interval_ms`. Malformed
+  JSON, missing numeric fields, or out-of-range values are rejected
+  silently and the device keeps running on the last valid config.
+  `paused` is exempt: it is optional and has no valid/invalid range.
 
 > Note the difference from the `reset_timer` command: a config update
 > restarts the **watering** countdown, whereas `set_timer` (via the

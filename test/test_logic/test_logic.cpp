@@ -158,6 +158,104 @@ void test_reset_pump_timer_restarts_countdown_without_state_change()
     TEST_ASSERT_EQUAL(Giessanlage::State::PumpingManual, g.getState(Channel::One));
 }
 
+// --- pause flag (#65) -------------------------------------------------------
+
+void test_pause_suppresses_auto_watering()
+{
+    Giessanlage g(1000UL, 200UL, 200UL);
+    TEST_ASSERT_TRUE(g.setPaused(true));
+    TEST_ASSERT_TRUE(g.isPaused());
+
+    // Same elapsed time that starts PumpingAuto in
+    // test_auto_pump_after_interval_elapsed.
+    g.tick(800UL);
+    TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::One));
+    TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::Two));
+    TEST_ASSERT_FALSE(g.isAnyPumping());
+}
+
+void test_pause_leaves_manual_control_working()
+{
+    Giessanlage g(1000UL, 200UL, 200UL);
+    g.setPaused(true);
+
+    // Pausing means "don't water on your own", not "refuse to work" -- manual
+    // control has to survive so a pump can be run during maintenance.
+    TEST_ASSERT_TRUE(g.triggerPump(Channel::One));
+    TEST_ASSERT_EQUAL(Giessanlage::State::PumpingManual, g.getState(Channel::One));
+    TEST_ASSERT_TRUE(g.stopPump(Channel::One));
+    TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::One));
+
+    TEST_ASSERT_TRUE(g.triggerAllPumps());
+    TEST_ASSERT_TRUE(g.isPumping(Channel::One));
+    TEST_ASSERT_TRUE(g.isPumping(Channel::Two));
+    TEST_ASSERT_TRUE(g.stopAllPumps());
+}
+
+void test_pause_lets_an_inflight_auto_cycle_finish()
+{
+    Giessanlage g(1000UL, 200UL, 200UL);
+    g.tick(800UL);
+    TEST_ASSERT_EQUAL(Giessanlage::State::PumpingAuto, g.getState(Channel::One));
+
+    // Pause is not an emergency stop: the running cycle completes on its own
+    // pump timer rather than being cut short.
+    g.setPaused(true);
+    g.tick(100UL);
+    TEST_ASSERT_EQUAL(Giessanlage::State::PumpingAuto, g.getState(Channel::One));
+
+    g.tick(100UL);
+    TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::One));
+}
+
+void test_pause_does_not_bank_a_cycle_for_resume()
+{
+    Giessanlage g(1000UL, 200UL, 200UL);
+    g.setPaused(true);
+
+    // Sit paused across several whole intervals. Each expiry is consumed and
+    // the countdown rearmed, so the timer never parks at zero.
+    for (int i = 0; i < 10; ++i)
+        g.tick(800UL);
+    TEST_ASSERT_FALSE(g.isAnyPumping());
+    TEST_ASSERT_NOT_EQUAL(0UL, g.getRemainingWateringInterval());
+
+    // Resuming must not immediately release a backlogged cycle...
+    TEST_ASSERT_TRUE(g.setPaused(false));
+    g.tick(1UL);
+    TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::One));
+
+    // ...but watering does resume on the normal cadence.
+    g.tick(800UL);
+    TEST_ASSERT_EQUAL(Giessanlage::State::PumpingAuto, g.getState(Channel::One));
+}
+
+void test_pause_suppresses_when_interval_is_shorter_than_pump_time()
+{
+    // Degenerate config: rearming cannot lift the timer off zero, because
+    // wateringTime <= maxPumpTime. The suppression must not depend on it.
+    Giessanlage g(100UL, 500UL, 500UL);
+    g.setPaused(true);
+
+    g.tick(1UL);
+    TEST_ASSERT_EQUAL_UINT32(0UL, g.getRemainingWateringInterval());
+    TEST_ASSERT_EQUAL(Giessanlage::State::Idle, g.getState(Channel::One));
+
+    g.tick(1000UL);
+    TEST_ASSERT_FALSE(g.isAnyPumping());
+}
+
+void test_set_paused_reports_only_real_changes()
+{
+    Giessanlage g;
+    TEST_ASSERT_FALSE(g.isPaused());
+
+    TEST_ASSERT_FALSE(g.setPaused(false)); // no change
+    TEST_ASSERT_TRUE(g.setPaused(true));
+    TEST_ASSERT_FALSE(g.setPaused(true));  // already paused
+    TEST_ASSERT_TRUE(g.setPaused(false));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -171,5 +269,11 @@ int main(int, char **)
     RUN_TEST(test_per_channel_pump_durations_are_independent);
     RUN_TEST(test_config_update_resets_watering_timer);
     RUN_TEST(test_reset_pump_timer_restarts_countdown_without_state_change);
+    RUN_TEST(test_pause_suppresses_auto_watering);
+    RUN_TEST(test_pause_leaves_manual_control_working);
+    RUN_TEST(test_pause_lets_an_inflight_auto_cycle_finish);
+    RUN_TEST(test_pause_does_not_bank_a_cycle_for_resume);
+    RUN_TEST(test_pause_suppresses_when_interval_is_shorter_than_pump_time);
+    RUN_TEST(test_set_paused_reports_only_real_changes);
     return UNITY_END();
 }

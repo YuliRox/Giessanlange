@@ -24,7 +24,8 @@ bool MqttStatus::Snapshot::operator==(const Snapshot &other) const
            remainingWateringMs == other.remainingWateringMs &&
            pumpTimeCh1Ms == other.pumpTimeCh1Ms &&
            pumpTimeCh2Ms == other.pumpTimeCh2Ms &&
-           wateringIntervalMs == other.wateringIntervalMs;
+           wateringIntervalMs == other.wateringIntervalMs &&
+           paused == other.paused;
     // uptimeMs intentionally excluded: it changes every tick. Periodic
     // republishing is driven by Config::heartbeatIntervalMs in update(),
     // not by treating every uptime increment as a "change".
@@ -48,6 +49,7 @@ std::string MqttStatus::buildPayload(const Snapshot &s)
         "\"pump_time_ch1_ms\":%lu,"
         "\"pump_time_ch2_ms\":%lu,"
         "\"watering_interval_ms\":%lu,"
+        "\"paused\":%s,"
         "\"uptime_ms\":%lu"
         "}",
         stateName(s.stateCh1),
@@ -58,6 +60,7 @@ std::string MqttStatus::buildPayload(const Snapshot &s)
         s.pumpTimeCh1Ms,
         s.pumpTimeCh2Ms,
         s.wateringIntervalMs,
+        s.paused ? "true" : "false",
         s.uptimeMs);
     return std::string(buf);
 }
@@ -77,8 +80,14 @@ bool MqttStatus::update(const Snapshot &snapshot, unsigned long nowMs)
             // idle. A channel state transition is never churn, so it always
             // uses minIntervalMs; otherwise the edge into Idle (the one that
             // says "pump finished") would be held back for idleIntervalMs.
+            // Discrete edges, as opposed to countdown churn. `paused` belongs
+            // here for the same reason the channel states do: it is operator
+            // intent, and holding it back for idleIntervalMs would leave a
+            // consumer showing "watering" for up to 5 min after a pause was
+            // accepted -- the same class of bug as #66.
             const bool stateChanged = snapshot.stateCh1 != _lastPublished.stateCh1 ||
-                                      snapshot.stateCh2 != _lastPublished.stateCh2;
+                                      snapshot.stateCh2 != _lastPublished.stateCh2 ||
+                                      snapshot.paused != _lastPublished.paused;
             const unsigned long floorMs =
                 (snapshot.allIdle && !stateChanged) ? _config.idleIntervalMs
                                                     : _config.minIntervalMs;

@@ -176,6 +176,7 @@ void mqttSetup()
             anlage.setPumpTime(Channel::One, v.pumpTimeCh1Ms);
             anlage.setPumpTime(Channel::Two, v.pumpTimeCh2Ms);
             anlage.setWateringInterval(v.wateringIntervalMs);
+            anlage.setPaused(v.paused);
             // setWateringInterval() only changes the configured duration; the
             // in-flight countdown keeps running against the old value unless
             // explicitly restarted here.
@@ -234,6 +235,7 @@ void mqttTick(unsigned long nowMs)
         s.pumpTimeCh1Ms       = anlage.getPumpTime(Channel::One);
         s.pumpTimeCh2Ms       = anlage.getPumpTime(Channel::Two);
         s.wateringIntervalMs  = anlage.getWateringInterval();
+        s.paused              = anlage.isPaused();
         s.uptimeMs            = nowMs;
         s.allIdle             = !anlage.isAnyPumping();
         mqttStatus->update(s, nowMs);
