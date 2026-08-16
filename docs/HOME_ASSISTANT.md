@@ -23,7 +23,8 @@ they show *unavailable* whenever the device is offline.
 |---|---|---|---|
 | Pump 1 / Pump 2 | `switch` | `commands/chN` + `status` | Toggles the pump; real state read back from `status`. |
 | Pump 1 / 2 duration | `number` (s) | `commands/chN` (`set_timer`) + `status` | Per-channel run time. |
-| Watering interval | `number` (h) | `config` + `status` | Rewrites the full retained `config` payload (reconstructs the two pump times from the duration entities). |
+| Watering interval | `number` (h) | `config` + `status` | Rewrites the full retained `config` payload (reconstructs the two pump times *and* the pause flag from the other entities). |
+| Pause watering | `switch` | `config` + `status` | `ON` = automatic watering suppressed. Manual pump control keeps working. |
 | Pump 1 / 2 state | `sensor` | `status` | `Idle` / `PumpingManual` / `PumpingAuto`. |
 | Pump 1 / 2 remaining | `sensor` (s) | `status` | Countdown while pumping. |
 | Next watering in | `sensor` (min) | `status` | Remaining interval, whole minutes. |
@@ -33,7 +34,30 @@ they show *unavailable* whenever the device is offline.
 
 > Display cadence follows the device's status publishing (see
 > [`MQTT.md`](MQTT.md)): ~30 s heartbeat while idle, so countdowns step
-> rather than tick every second.
+> rather than tick every second. Pump state and the pause flag are
+> exceptions — those publish within ~1 s of changing, so toggles feel
+> immediate rather than waiting out the idle interval.
+
+### The two `config` writers must preserve each other
+
+`giessanlage/config` is a **whole-document** topic: the device replaces its
+config with whatever the payload contains, and any field left out falls
+back to its default. Both entities that write it therefore reconstruct the
+fields they don't own from current HA state:
+
+- **Watering interval** reads the two duration entities *and* the pause
+  switch.
+- **Pause watering** reads the two duration entities *and* the interval.
+
+Leaving `paused` out of the interval entity's template would silently clear
+an active pause every time someone nudged the schedule — the failure would
+be invisible until the beds got watered during a frost or a leak repair.
+If you add a third writer to this topic, it must carry every field too.
+
+Both also publish with `retain: true`. The device treats the retained
+`config` message as broker truth on reconnect, so a non-retained write
+would apply live and then be undone by the stale retained payload the next
+time the device reconnected.
 
 ## Applying the config
 
