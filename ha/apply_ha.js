@@ -71,8 +71,8 @@ function saveDashboard() {
           console.log(`dashboard "${URL_PATH}" is YAML-mode — HA does not allow writing it over the API.`);
           console.log("MQTT discovery above was applied; install the dashboard file instead:");
           console.log("  python3 ha/gen_dashboard_yaml.py    # regenerate from the JSON");
-          console.log("  copy ha/giessanlage_dashboard.yaml into the HA config dir");
-          console.log("  then Developer Tools -> YAML -> Reload Lovelace");
+          console.log("  copy ha/giessanlage_dashboard.yaml over the file configuration.yaml points at");
+          console.log("  (see docs/HOME_ASSISTANT.md for the scp/ssh one-liner)");
           return finish();
         }
         return send({ type: "lovelace/dashboards/create", url_path: URL_PATH, title: dashboard.title, icon: "mdi:watering-can", show_in_sidebar: true, require_admin: false });

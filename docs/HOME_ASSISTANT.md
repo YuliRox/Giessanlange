@@ -108,28 +108,26 @@ If the dashboard is **storage mode**, the script writes it directly, and it
 is also editable in the HA UI (open it → pencil, top-right); to keep the repo
 authoritative, re-export UI edits back into `giessanlage_dashboard.json`.
 
-If the dashboard is **YAML mode** (which is how the current instance is set
-up — all its dashboards are), install the generated file instead:
+If the dashboard is **YAML mode** — which is how the current instance is set
+up, all three of its dashboards are — copy the generated file in instead.
+
+On that instance HA runs in Docker on `192.168.50.100`, `/config` is
+bind-mounted from `/home/ubuntu/homeassistant/config`, and
+`configuration.yaml` already points `giessanlage-watering` at
+`dashboards/giessanlage.yaml`. So:
 
 ```bash
-python3 ha/gen_dashboard_yaml.py     # regenerate from the JSON
-# copy ha/giessanlage_dashboard.yaml into the HA config dir (/config)
+python3 ha/gen_dashboard_yaml.py                       # regenerate from the JSON
+scp ha/giessanlage_dashboard.yaml 192.168.50.100:/tmp/g.yaml
+ssh 192.168.50.100 'cd /home/ubuntu/homeassistant/config/dashboards \
+  && sudo cp -a giessanlage.yaml "giessanlage.yaml.bak-$(date +%Y%m%d-%H%M%S)" \
+  && sudo install -o root -g root -m 644 /tmp/g.yaml giessanlage.yaml'
 ```
 
-and reference it from `configuration.yaml`:
-
-```yaml
-lovelace:
-  dashboards:
-    giessanlage-watering:
-      mode: yaml
-      filename: giessanlage_dashboard.yaml
-      title: Gießanlage
-      icon: mdi:watering-can
-      show_in_sidebar: true
-```
-
-Then *Developer Tools → YAML → Reload Lovelace*, or restart HA.
+YAML dashboards are read on demand, so the change is live on the next page
+load — no *Reload Lovelace* and no restart needed. The files are owned by
+`root`, hence the `sudo`; back up first, since this overwrites whatever is
+there and YAML dashboards are not editable in the UI to recover from.
 
 Edit the **JSON** and regenerate; never hand-edit the YAML. The generator
 asserts the two round-trip identically, so a mangled template fails loudly

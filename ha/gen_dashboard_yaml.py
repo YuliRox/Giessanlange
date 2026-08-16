@@ -36,20 +36,19 @@ HEADER = """\
 #
 # Why this exists: the target HA instance serves dashboards in YAML mode, where
 # HA refuses lovelace/config/save ("Not supported"). apply_ha.js can still push
-# the MQTT discovery message, but not the dashboard -- install this file into
-# the HA config directory and reference it from configuration.yaml:
+# the MQTT discovery message, but not the dashboard -- this file has to be
+# copied into the HA config directory instead.
 #
-#   lovelace:
-#     dashboards:
-#       giessanlage-watering:
-#         mode: yaml
-#         filename: giessanlage_dashboard.yaml
-#         title: Gießanlage
-#         icon: mdi:watering-can
-#         show_in_sidebar: true
+# On the current instance HA runs in Docker on 192.168.50.100, with /config
+# bind-mounted from /home/ubuntu/homeassistant/config, and configuration.yaml
+# already points giessanlage-watering at dashboards/giessanlage.yaml:
 #
-# Reload afterwards with Developer Tools -> YAML -> "Reload Lovelace", or
-# restart HA.
+#   scp ha/giessanlage_dashboard.yaml 192.168.50.100:/tmp/g.yaml
+#   ssh 192.168.50.100 'sudo install -o root -g root -m 644 \
+#       /tmp/g.yaml /home/ubuntu/homeassistant/config/dashboards/giessanlage.yaml'
+#
+# YAML dashboards are read on demand, so the change is live on next page load;
+# no reload or restart needed.
 
 """
 
