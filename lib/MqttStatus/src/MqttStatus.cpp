@@ -71,11 +71,17 @@ bool MqttStatus::update(const Snapshot &snapshot, unsigned long nowMs)
         const bool changed = snapshot != _lastPublished; // uptime excluded
         if (changed)
         {
-            // Meaningful change: publish, but throttle bursts. Idle uses a
-            // wider floor since remainingWateringMs alone keeps this branch
-            // "changed" on nearly every tick.
+            // Meaningful change: publish, but throttle bursts. The wide idle
+            // floor only applies to countdown churn — remainingWateringMs
+            // alone keeps this branch "changed" on nearly every tick while
+            // idle. A channel state transition is never churn, so it always
+            // uses minIntervalMs; otherwise the edge into Idle (the one that
+            // says "pump finished") would be held back for idleIntervalMs.
+            const bool stateChanged = snapshot.stateCh1 != _lastPublished.stateCh1 ||
+                                      snapshot.stateCh2 != _lastPublished.stateCh2;
             const unsigned long floorMs =
-                snapshot.allIdle ? _config.idleIntervalMs : _config.minIntervalMs;
+                (snapshot.allIdle && !stateChanged) ? _config.idleIntervalMs
+                                                    : _config.minIntervalMs;
             if (sincePublish < floorMs)
                 return false;
         }

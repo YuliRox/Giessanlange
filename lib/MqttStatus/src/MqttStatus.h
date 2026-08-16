@@ -26,7 +26,9 @@ public:
         // True when no channel is pumping. Not part of equality/payload; it
         // only selects which throttle (minIntervalMs vs idleIntervalMs)
         // applies, since remainingWateringMs otherwise looks "changed" on
-        // essentially every tick while idle.
+        // essentially every tick while idle. The wide idle floor applies to
+        // that countdown churn only — a change in stateCh1/stateCh2 always
+        // publishes at minIntervalMs, so pump on/off edges are never delayed.
         bool allIdle = false;
 
         bool operator==(const Snapshot &other) const;

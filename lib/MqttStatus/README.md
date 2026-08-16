@@ -71,11 +71,21 @@ debugging.
 | Snapshot same as last *successfully* published | No-op |
 | Snapshot differs, but `< minIntervalMs` since last publish | No-op (coalesced) |
 | Snapshot differs, `>= minIntervalMs` elapsed | Publish, record |
+| Only countdown fields differ while all channels are idle | Throttled to `idleIntervalMs` (5 min) instead |
+| `stateCh1`/`stateCh2` differs | Always `minIntervalMs`, even when the new snapshot is idle |
+| Nothing meaningful differs, `>= heartbeatIntervalMs` elapsed | Publish (keeps the retained snapshot fresh) |
 | Publish fails (broker offline) | Return false; do NOT record as published — retry on next call |
 | `invalidate()` called | Next non-throttled call publishes regardless of equality |
 
 The retained flag is always `true` — last write wins on the broker, so
 late subscribers always see the current state.
+
+The wide idle floor exists because `remainingWateringMs` counts down on
+nearly every tick, so idle status would otherwise publish at
+`minIntervalMs` cadence forever. It deliberately does **not** cover
+channel state transitions: applying it to the edge into `Idle` delayed
+the "pump finished" publish by up to 5 minutes (#66), which made switch
+on-time useless as a runtime measure.
 
 ## Wiring on Arduino
 

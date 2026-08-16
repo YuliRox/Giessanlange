@@ -208,6 +208,91 @@ void test_changed_snapshot_after_throttle_publishes()
     TEST_ASSERT_TRUE(pub.calls[1].payload.find("PumpingManual") != std::string::npos);
 }
 
+void test_pump_off_transition_bypasses_idle_throttle()
+{
+    // Regression for #66: the edge into Idle must not be held back by the
+    // wide idle floor, or switch on-time reads as runtime + idleIntervalMs.
+    PublishFake pub;
+    MqttStatus::Config cfg;
+    cfg.minIntervalMs = 1000;
+    cfg.idleIntervalMs = 300000; // 5 min, as shipped
+    MqttStatus status(pub.fn(), cfg);
+
+    // Both channels pumping.
+    auto s = defaultSnapshot();
+    s.stateCh1 = 3; // PumpingAuto
+    s.stateCh2 = 3;
+    s.remainingPumpMsCh1 = 120000;
+    s.remainingPumpMsCh2 = 120000;
+    s.allIdle = false;
+    TEST_ASSERT_TRUE(status.update(s, 0));
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    // Pumps finish: transition into Idle. The new snapshot is idle, but the
+    // change is a state transition, so minIntervalMs applies — well short of
+    // idleIntervalMs.
+    s.stateCh1 = 1; // Idle
+    s.stateCh2 = 1;
+    s.remainingPumpMsCh1 = 0;
+    s.remainingPumpMsCh2 = 0;
+    s.allIdle = true;
+    TEST_ASSERT_TRUE(status.update(s, 2000));
+    TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
+    TEST_ASSERT_TRUE(pub.calls[1].payload.find("\"state_ch1\":\"Idle\"") != std::string::npos);
+    TEST_ASSERT_TRUE(pub.calls[1].payload.find("\"state_ch2\":\"Idle\"") != std::string::npos);
+}
+
+void test_pump_on_transition_uses_min_interval()
+{
+    // Mirror of the off edge: going idle -> pumping must also publish
+    // promptly (guards against selecting the floor from the *previous*
+    // snapshot's allIdle, which would delay the on edge instead).
+    PublishFake pub;
+    MqttStatus::Config cfg;
+    cfg.minIntervalMs = 1000;
+    cfg.idleIntervalMs = 300000;
+    MqttStatus status(pub.fn(), cfg);
+
+    auto s = defaultSnapshot();
+    s.allIdle = true;
+    TEST_ASSERT_TRUE(status.update(s, 0));
+
+    s.stateCh1 = 3; // PumpingAuto
+    s.remainingPumpMsCh1 = 120000;
+    s.remainingWateringMs = 0;
+    s.allIdle = false;
+    TEST_ASSERT_TRUE(status.update(s, 2000));
+    TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
+    TEST_ASSERT_TRUE(pub.calls[1].payload.find("\"state_ch1\":\"PumpingAuto\"") != std::string::npos);
+}
+
+void test_state_transition_still_coalesced_within_min_interval()
+{
+    // The transition bypasses the *idle* floor, not minIntervalMs itself —
+    // burst coalescing must survive.
+    PublishFake pub;
+    MqttStatus::Config cfg;
+    cfg.minIntervalMs = 1000;
+    cfg.idleIntervalMs = 300000;
+    MqttStatus status(pub.fn(), cfg);
+
+    auto s = defaultSnapshot();
+    s.stateCh1 = 3;
+    s.allIdle = false;
+    TEST_ASSERT_TRUE(status.update(s, 0));
+
+    // Transition inside the min window: still held back.
+    s.stateCh1 = 1;
+    s.remainingPumpMsCh1 = 0;
+    s.allIdle = true;
+    TEST_ASSERT_FALSE(status.update(s, 500));
+    TEST_ASSERT_EQUAL_INT(1, (int)pub.calls.size());
+
+    // Once minIntervalMs elapses the pending transition goes out.
+    TEST_ASSERT_TRUE(status.update(s, 1000));
+    TEST_ASSERT_EQUAL_INT(2, (int)pub.calls.size());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -220,5 +305,8 @@ int main(int, char **)
     RUN_TEST(test_publish_failure_does_not_record_as_published);
     RUN_TEST(test_invalidate_forces_republish_even_if_snapshot_unchanged);
     RUN_TEST(test_changed_snapshot_after_throttle_publishes);
+    RUN_TEST(test_pump_off_transition_bypasses_idle_throttle);
+    RUN_TEST(test_pump_on_transition_uses_min_interval);
+    RUN_TEST(test_state_transition_still_coalesced_within_min_interval);
     return UNITY_END();
 }
