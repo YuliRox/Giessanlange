@@ -150,6 +150,20 @@ bool Giessanlage::resetWateringTimer()
     return true;
 }
 
+bool Giessanlage::setPaused(bool paused)
+{
+    if (this->paused == paused)
+        return false;
+
+    this->paused = paused;
+    return true;
+}
+
+bool Giessanlage::isPaused() const
+{
+    return this->paused;
+}
+
 unsigned long Giessanlage::getRemainingPumpTime(Channel channel) const
 {
     return this->channels[idx(channel)].pumpTimer;
@@ -176,7 +190,11 @@ bool Giessanlage::tickChannel(Channel channel, unsigned long delta)
     switch (ch.state)
     {
     case State::Idle:
-        if (this->wateringTimer == 0UL)
+        // This guard is what actually enforces the pause. tick() normally
+        // keeps wateringTimer off zero while paused, but that rearm cannot
+        // lift it in the degenerate config where wateringTime <= maxPumpTime,
+        // so the suppression is checked here rather than relying on the timer.
+        if (this->wateringTimer == 0UL && !this->paused)
             return setState(channel, State::PumpingAuto);
         break;
     case State::PumpingManual:
@@ -193,6 +211,15 @@ bool Giessanlage::tickChannel(Channel channel, unsigned long delta)
 bool Giessanlage::tick(unsigned long delta)
 {
     updateTimer(this->wateringTimer, delta);
+
+    // While paused the timer keeps running, but each expiry is consumed here
+    // and the interval rearmed, so it never parks at zero. Without this,
+    // resuming after a long pause would find wateringTimer already 0 and water
+    // immediately -- the surprise this design exists to avoid. Consuming the
+    // expiry instead means a pause skips cycles rather than banking them, and
+    // watering resumes on its normal cadence.
+    if (this->paused && this->wateringTimer == 0UL)
+        resetWateringTimerInternal();
 
     bool anyChange = false;
     anyChange |= tickChannel(Channel::One, delta);

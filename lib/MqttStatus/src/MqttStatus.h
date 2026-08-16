@@ -22,6 +22,9 @@ public:
         unsigned long pumpTimeCh1Ms = 0;
         unsigned long pumpTimeCh2Ms = 0;
         unsigned long wateringIntervalMs = 0;
+        // Automatic watering suppressed. Part of equality and the payload, so
+        // flipping it publishes promptly rather than waiting for the heartbeat.
+        bool paused = false;
         unsigned long uptimeMs = 0;
         // True when no channel is pumping. Not part of equality/payload; it
         // only selects which throttle (minIntervalMs vs idleIntervalMs)

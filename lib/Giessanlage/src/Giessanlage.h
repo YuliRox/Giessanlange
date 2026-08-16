@@ -63,6 +63,22 @@ public:
     unsigned long getWateringInterval() const;
     bool resetWateringTimer();
 
+    /// @brief suppress automatic watering without touching the configuration
+    ///
+    /// While paused, no channel may transition Idle -> PumpingAuto. Manual
+    /// control is deliberately unaffected: triggerPump / triggerAllPumps and
+    /// the physical buttons keep working, because pausing means "do not water
+    /// on your own", not "refuse to work" — during maintenance one wants to
+    /// run a pump by hand precisely while automatic watering is off. A
+    /// PumpingAuto cycle already in flight is allowed to finish.
+    ///
+    /// The watering timer keeps running while paused; each expiry is consumed
+    /// and the timer rearmed (see tick()), so resuming never releases a
+    /// backlogged cycle and watering continues on its normal cadence.
+    /// @return true if the flag changed
+    bool setPaused(bool paused);
+    bool isPaused() const;
+
     /// @brief restart the in-flight pump countdown to the current pumpTime,
     /// without changing state (unlike triggerPump/stopPump)
     bool resetPumpTimer(Channel channel);
@@ -84,6 +100,9 @@ private:
 
     unsigned long wateringTime = 0;
     unsigned long wateringTimer = 0;
+
+    // Suppresses Idle -> PumpingAuto only; see setPaused().
+    bool paused = false;
 
     static int idx(Channel c) { return static_cast<int>(c); }
 

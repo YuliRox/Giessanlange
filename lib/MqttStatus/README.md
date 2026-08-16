@@ -56,9 +56,13 @@ JSON, all fields always present. State enums serialised as strings.
   "pump_time_ch1_ms": 30000,
   "pump_time_ch2_ms": 30000,
   "watering_interval_ms": 86400000,
+  "paused": false,
   "uptime_ms": 0
 }
 ```
+
+`paused` mirrors the config flag that suppresses automatic watering, so a
+consumer can show the current state and detect drift.
 
 `buildPayload(snapshot)` is `static` and exposed for tests / display
 debugging.
@@ -72,7 +76,7 @@ debugging.
 | Snapshot differs, but `< minIntervalMs` since last publish | No-op (coalesced) |
 | Snapshot differs, `>= minIntervalMs` elapsed | Publish, record |
 | Only countdown fields differ while all channels are idle | Throttled to `idleIntervalMs` (5 min) instead |
-| `stateCh1`/`stateCh2` differs | Always `minIntervalMs`, even when the new snapshot is idle |
+| `stateCh1`/`stateCh2`/`paused` differs | Always `minIntervalMs`, even when the new snapshot is idle |
 | Nothing meaningful differs, `>= heartbeatIntervalMs` elapsed | Publish (keeps the retained snapshot fresh) |
 | Publish fails (broker offline) | Return false; do NOT record as published — retry on next call |
 | `invalidate()` called | Next non-throttled call publishes regardless of equality |
@@ -83,9 +87,11 @@ late subscribers always see the current state.
 The wide idle floor exists because `remainingWateringMs` counts down on
 nearly every tick, so idle status would otherwise publish at
 `minIntervalMs` cadence forever. It deliberately does **not** cover
-channel state transitions: applying it to the edge into `Idle` delayed
-the "pump finished" publish by up to 5 minutes (#66), which made switch
-on-time useless as a runtime measure.
+discrete edges — channel state transitions or `paused`. Applying it to
+the edge into `Idle` delayed the "pump finished" publish by up to 5
+minutes (#66), which made switch on-time useless as a runtime measure;
+`paused` is excluded for the same reason, since it is only ever changed
+while idle and a consumer would otherwise show stale state for as long.
 
 ## Wiring on Arduino
 

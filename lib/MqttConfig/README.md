@@ -30,18 +30,32 @@ Retained `giessanlage/config` payload, JSON:
 {
   "pump_time_ch1_ms": 30000,
   "pump_time_ch2_ms": 45000,
-  "watering_interval_ms": 86400000
+  "watering_interval_ms": 86400000,
+  "paused": false
 }
 ```
 
-NVS keys (in the bridge's chosen Preferences namespace — see
-`src/main.cpp`, which uses `giessanlage_cfg`):
+`paused` suppresses automatic watering (`Idle → PumpingAuto`) while
+leaving manual pump control available. It is **optional**: a retained
+payload written before the flag existed parses as `false` rather than
+being rejected. Accepts `true`/`false` and `1`/`0`.
 
-| Key | Type |
-|---|---|
-| `pump_time_ch1_ms` | unsigned long, as decimal string |
-| `pump_time_ch2_ms` | unsigned long, as decimal string |
-| `watering_interval_ms` | unsigned long, as decimal string |
+NVS keys (in the bridge's chosen Preferences namespace — see
+`src/mqtt_glue.cpp`, which uses `giessanlage_cfg`). ESP32 NVS keys are
+capped at 15 chars, so the numeric ones are short aliases of the JSON
+field names rather than the names themselves:
+
+| NVS key | JSON field | Type |
+|---|---|---|
+| `pump_t_ch1_ms` | `pump_time_ch1_ms` | unsigned long, as decimal string |
+| `pump_t_ch2_ms` | `pump_time_ch2_ms` | unsigned long, as decimal string |
+| `water_int_ms` | `watering_interval_ms` | unsigned long, as decimal string |
+| `paused` | `paused` | `"1"` / `"0"` |
+
+Only the three numeric keys decide whether NVS counts as seeded. A store
+written before `paused` existed is therefore left intact on upgrade
+instead of being treated as corrupt and rewritten; the key is added on
+the next config change.
 
 ## Validation rules
 
@@ -52,6 +66,8 @@ A config is **valid** iff:
 - `watering_interval_ms > 0`
 - `pump_time_ch1_ms < watering_interval_ms`
 - `pump_time_ch2_ms < watering_interval_ms`
+
+`paused` is exempt — it is optional and has no invalid value.
 
 Invalid payloads are silently ignored (the bridge can layer logging on
 top).

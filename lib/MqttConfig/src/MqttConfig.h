@@ -32,11 +32,17 @@ public:
         unsigned long pumpTimeCh2Ms = 0;
         unsigned long wateringIntervalMs = 0;
 
+        // Suppresses automatic watering only; manual pump control stays
+        // available. Optional on the wire and absent from older NVS stores,
+        // where it reads as false — see parsePayload() and initFromNvs().
+        bool paused = false;
+
         bool operator==(const Values &o) const
         {
             return pumpTimeCh1Ms == o.pumpTimeCh1Ms &&
                    pumpTimeCh2Ms == o.pumpTimeCh2Ms &&
-                   wateringIntervalMs == o.wateringIntervalMs;
+                   wateringIntervalMs == o.wateringIntervalMs &&
+                   paused == o.paused;
         }
         bool operator!=(const Values &o) const { return !(*this == o); }
     };
