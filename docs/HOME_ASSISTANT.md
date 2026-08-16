@@ -10,8 +10,18 @@ The config lives in [`ha/`](../ha/):
 | File | What it is |
 |---|---|
 | `ha/giessanlage_discovery.json` | Device-based MQTT discovery payload — defines every entity, grouped as one "Gießanlage" device, wired to the topics in [`MQTT.md`](MQTT.md). |
-| `ha/giessanlage_dashboard.json` | Lovelace dashboard config (storage mode). |
+| `ha/giessanlage_dashboard.json` | Lovelace dashboard config — the source of truth. |
+| `ha/giessanlage_dashboard.yaml` | **Generated** from the JSON for YAML-mode installs. Do not hand-edit. |
+| `ha/gen_dashboard_yaml.py` | Regenerates the YAML from the JSON and asserts they round-trip identically. |
 | `ha/apply_ha.js` | Node helper that publishes the discovery message and creates/updates the dashboard. |
+
+Every entity pins its `entity_id` via `default_entity_id` in the discovery
+payload. Without it HA derives the id from the device's friendly name, which
+drifts when the device is renamed or moved to an area — and a drifted id
+silently breaks the cross-entity references in the `config` command templates
+below. Note this only applies when an entity is **first** created; an entity
+already in the registry keeps its existing id, so a drifted one must be
+renamed by hand in the HA UI.
 
 ## Entities
 
@@ -84,9 +94,46 @@ HA_HOST=10.0.0.5:8123 DASH_URL=giessanlage-watering node ha/apply_ha.js
 ```
 
 The script is idempotent — re-run it after editing either JSON to push the
-changes. The dashboard is *storage mode*, so it's also editable in the HA UI
-(open it → pencil, top-right); to keep the repo authoritative, re-export UI
-edits back into `giessanlage_dashboard.json`.
+changes.
+
+### Storage mode vs YAML mode
+
+`apply_ha.js` can only write the dashboard if it is a **storage-mode**
+dashboard. HA rejects `lovelace/config/save` on YAML-mode dashboards with a
+bare `Not supported`, so the script now checks the mode first and tells you
+what to do instead of failing obscurely. Discovery is published either way —
+that path is unaffected.
+
+If the dashboard is **storage mode**, the script writes it directly, and it
+is also editable in the HA UI (open it → pencil, top-right); to keep the repo
+authoritative, re-export UI edits back into `giessanlage_dashboard.json`.
+
+If the dashboard is **YAML mode** (which is how the current instance is set
+up — all its dashboards are), install the generated file instead:
+
+```bash
+python3 ha/gen_dashboard_yaml.py     # regenerate from the JSON
+# copy ha/giessanlage_dashboard.yaml into the HA config dir (/config)
+```
+
+and reference it from `configuration.yaml`:
+
+```yaml
+lovelace:
+  dashboards:
+    giessanlage-watering:
+      mode: yaml
+      filename: giessanlage_dashboard.yaml
+      title: Gießanlage
+      icon: mdi:watering-can
+      show_in_sidebar: true
+```
+
+Then *Developer Tools → YAML → Reload Lovelace*, or restart HA.
+
+Edit the **JSON** and regenerate; never hand-edit the YAML. The generator
+asserts the two round-trip identically, so a mangled template fails loudly
+rather than shipping a broken dashboard.
 
 ## How the discovery path works
 

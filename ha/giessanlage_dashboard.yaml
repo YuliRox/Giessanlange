@@ -1,0 +1,124 @@
+# Gießanlage Lovelace dashboard (YAML mode).
+#
+# GENERATED from ha/giessanlage_dashboard.json by ha/gen_dashboard_yaml.py.
+# Edit the JSON and regenerate; do not hand-edit this file.
+#
+# Why this exists: the target HA instance serves dashboards in YAML mode, where
+# HA refuses lovelace/config/save ("Not supported"). apply_ha.js can still push
+# the MQTT discovery message, but not the dashboard -- install this file into
+# the HA config directory and reference it from configuration.yaml:
+#
+#   lovelace:
+#     dashboards:
+#       giessanlage-watering:
+#         mode: yaml
+#         filename: giessanlage_dashboard.yaml
+#         title: Gießanlage
+#         icon: mdi:watering-can
+#         show_in_sidebar: true
+#
+# Reload afterwards with Developer Tools -> YAML -> "Reload Lovelace", or
+# restart HA.
+
+title: Gießanlage
+views:
+- title: Gießanlage
+  path: overview
+  icon: mdi:watering-can
+  badges:
+  - type: entity
+    entity: binary_sensor.giessanlage_online
+  cards:
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+    - type: tile
+      entity: switch.giessanlage_pump_1
+      name: Pump 1
+      icon: mdi:water-pump
+      features:
+      - type: toggle
+    - type: tile
+      entity: switch.giessanlage_pump_2
+      name: Pump 2
+      icon: mdi:water-pump
+      features:
+      - type: toggle
+  - type: tile
+    entity: switch.giessanlage_pause_watering
+    name: Pause automatic watering
+    icon: mdi:pause-octagon
+    state_content:
+    - state
+    features:
+    - type: toggle
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+    - type: entities
+      title: Channel 1
+      state_color: true
+      entities:
+      - entity: sensor.giessanlage_pump_1_state
+        name: State
+      - entity: sensor.giessanlage_pump_1_remaining
+        name: Remaining
+      - entity: number.giessanlage_pump_1_duration
+        name: Run duration
+    - type: entities
+      title: Channel 2
+      state_color: true
+      entities:
+      - entity: sensor.giessanlage_pump_2_state
+        name: State
+      - entity: sensor.giessanlage_pump_2_remaining
+        name: Remaining
+      - entity: number.giessanlage_pump_2_duration
+        name: Run duration
+  - type: markdown
+    content: '{% if is_state(''switch.giessanlage_pause_watering'', ''on'') %}<h2 style="text-align:center;margin:0">⏸️ Automatic
+      watering paused</h2>
+
+      <p style="text-align:center;margin:6px 0 0;opacity:0.7">The countdown keeps running, but no cycle will start.<br>Manual
+      pump control still works.</p>{% else %}<h2 style="text-align:center;margin:0">⏳ Next watering in</h2>
+
+      <h1 style="text-align:center;font-family:monospace;letter-spacing:2px;margin:4px 0 0">{{ states(''sensor.giessanlage_next_watering_countdown'')
+      }}</h1>{% endif %}'
+  - type: entities
+    title: Watering schedule
+    icon: mdi:calendar-clock
+    entities:
+    - entity: switch.giessanlage_pause_watering
+      name: Paused
+    - entity: number.giessanlage_watering_interval
+      name: Interval
+    - entity: sensor.giessanlage_next_watering_countdown
+      name: Countdown (HH:mm:ss)
+    - entity: sensor.giessanlage_next_watering_in
+      name: Next watering in
+  - type: conditional
+    conditions:
+    - entity: switch.giessanlage_pause_watering
+      state: 'off'
+    card:
+      type: gauge
+      entity: sensor.giessanlage_next_watering_in
+      name: Next watering
+      unit: min
+      min: 0
+      max: 720
+      needle: true
+      severity:
+        green: 0
+        yellow: 120
+        red: 600
+  - type: entities
+    title: Diagnostics
+    icon: mdi:information-outline
+    entities:
+    - entity: binary_sensor.giessanlage_online
+      name: Connection
+    - entity: sensor.giessanlage_uptime
+      name: Uptime

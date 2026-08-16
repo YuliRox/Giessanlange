@@ -48,16 +48,35 @@ function saveDashboard() {
     let id = 0;
     const pending = new Map();
     const send = (msg) => { const myId = ++id; pending.set(myId, msg.type); ws.send(JSON.stringify({ id: myId, ...msg })); };
+    // Cleared on every success path: an uncleared watchdog keeps the event loop
+    // alive and then reports TIMEOUT (exit 8) on a run that already succeeded.
+    let watchdog;
+    const finish = () => { clearTimeout(watchdog); ws.close(); resolve(); };
 
     ws.addEventListener("message", (ev) => {
       const m = JSON.parse(ev.data);
       if (m.type === "auth_required") return ws.send(JSON.stringify({ type: "auth", access_token: TOKEN }));
       if (m.type === "auth_invalid") { console.error("AUTH FAILED"); process.exit(4); }
       if (m.type === "auth_ok") {
-        return send({ type: "lovelace/dashboards/create", url_path: URL_PATH, title: dashboard.title, icon: "mdi:watering-can", show_in_sidebar: true, require_admin: false });
+        // Check the mode before trying to write. HA refuses
+        // lovelace/config/save on YAML-mode dashboards with a bare "Not
+        // supported", which is easy to misread as a bad payload.
+        return send({ type: "lovelace/dashboards/list" });
       }
       if (m.type !== "result") return;
       const what = pending.get(m.id);
+      if (what === "lovelace/dashboards/list") {
+        const existing = (m.result || []).find((d) => d.url_path === URL_PATH);
+        if (existing && existing.mode === "yaml") {
+          console.log(`dashboard "${URL_PATH}" is YAML-mode — HA does not allow writing it over the API.`);
+          console.log("MQTT discovery above was applied; install the dashboard file instead:");
+          console.log("  python3 ha/gen_dashboard_yaml.py    # regenerate from the JSON");
+          console.log("  copy ha/giessanlage_dashboard.yaml into the HA config dir");
+          console.log("  then Developer Tools -> YAML -> Reload Lovelace");
+          return finish();
+        }
+        return send({ type: "lovelace/dashboards/create", url_path: URL_PATH, title: dashboard.title, icon: "mdi:watering-can", show_in_sidebar: true, require_admin: false });
+      }
       if (what === "lovelace/dashboards/create") {
         const msg = m.error && m.error.message;
         if (m.success) console.log("dashboard created:", URL_PATH);
@@ -66,12 +85,12 @@ function saveDashboard() {
         return send({ type: "lovelace/config/save", url_path: URL_PATH, config: dashboard });
       }
       if (what === "lovelace/config/save") {
-        if (m.success) { console.log("dashboard config saved:", `/${URL_PATH}`); ws.close(); resolve(); }
+        if (m.success) { console.log("dashboard config saved:", `/${URL_PATH}`); finish(); }
         else { console.error("SAVE FAILED:", m.error); process.exit(6); }
       }
     });
     ws.addEventListener("error", (e) => { console.error("WS ERROR:", e.message || e); process.exit(7); });
-    setTimeout(() => { console.error("TIMEOUT"); process.exit(8); }, 15000);
+    watchdog = setTimeout(() => { console.error("TIMEOUT"); process.exit(8); }, 15000);
   });
 }
 
